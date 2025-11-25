@@ -429,22 +429,59 @@
                     fetchSupabaseData("gold_rates_api")
                 ]);
 
-                const storedRates = JSON.parse(localStorage.getItem('previousRates')) || {};
-                const newRatesMap = {};
+                // استرجاع البيانات المحفوظة
+                // anchorRates: السعر القديم الذي نقيس عليه النسبة (يبقى ثابتاً حتى يحدث تغيير حقيقي)
+                const anchorRates = JSON.parse(localStorage.getItem('anchorRates')) || {};
+                // lastFetchedRates: آخر سعر فعلي رآه التطبيق (للمقارنة واكتشاف التغيير)
+                const lastFetchedRates = JSON.parse(localStorage.getItem('lastFetchedRates')) || {};
+                
+                const newAnchorMap = { ...anchorRates };
+                const newLastFetchedMap = {};
 
                 const enrichedCurrencies = currencies.map(c => {
                     const { code } = getFlagAndCode(c.name);
                     const sellPrice = parseFloat(c.sell_price);
-                    const stats = calculateChange(code, sellPrice, storedRates);
-                    newRatesMap[code] = sellPrice;
+                    
+                    let anchorPrice = anchorRates[code];
+                    const lastSeenPrice = lastFetchedRates[code];
+
+                    // المنطق الذكي: هل تغير السعر عن آخر مرة فتحت فيها التطبيق؟
+                    if (lastSeenPrice && Math.abs(sellPrice - lastSeenPrice) > 0.001) {
+                        // نعم تغير السعر: نجعل السعر القديم هو المعيار الجديد للمقارنة
+                        anchorPrice = lastSeenPrice;
+                    } else if (!anchorPrice) {
+                        // أول مرة يفتح التطبيق
+                        anchorPrice = sellPrice;
+                    }
+                    // إذا لم يتغير السعر (sellPrice == lastSeenPrice)، يبقى anchorPrice كما هو
+
+                    const stats = calculateChange(code, sellPrice, { [code]: anchorPrice });
+                    
+                    // تحديث الخرائط للحفظ
+                    newAnchorMap[code] = anchorPrice;
+                    newLastFetchedMap[code] = sellPrice;
+
                     return { ...c, stats, code };
                 });
 
                 const enrichedGold = gold.map(g => {
                     const code = `GOLD_${g.id || g.description}`; 
                     const sellPrice = parseFloat(g.sell_price);
-                    const stats = calculateChange(code, sellPrice, storedRates);
-                    newRatesMap[code] = sellPrice;
+                    
+                    let anchorPrice = anchorRates[code];
+                    const lastSeenPrice = lastFetchedRates[code];
+
+                    if (lastSeenPrice && Math.abs(sellPrice - lastSeenPrice) > 0.001) {
+                        anchorPrice = lastSeenPrice;
+                    } else if (!anchorPrice) {
+                        anchorPrice = sellPrice;
+                    }
+
+                    const stats = calculateChange(code, sellPrice, { [code]: anchorPrice });
+                    
+                    newAnchorMap[code] = anchorPrice;
+                    newLastFetchedMap[code] = sellPrice;
+
                     return { ...g, stats };
                 });
 
@@ -456,7 +493,10 @@
                 const usd = enrichedCurrencies.find(c => c.name.includes("دولار"));
                 if (usd) setCalcSource(usd);
 
-                localStorage.setItem('previousRates', JSON.stringify(newRatesMap));
+                // حفظ البيانات بالهيكلية الجديدة
+                localStorage.setItem('anchorRates', JSON.stringify(newAnchorMap));
+                localStorage.setItem('lastFetchedRates', JSON.stringify(newLastFetchedMap));
+                
                 setLoading(false);
                 if (window.lucide) setTimeout(() => window.lucide.createIcons(), 100);
             };
