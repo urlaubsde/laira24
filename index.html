@@ -142,7 +142,7 @@
             CNY: { name: "يوان صيني", flag: "🇨🇳" }
         };
 
-        // ********** START OF MODIFIED fetchSupabaseData FUNCTION **********
+        // ********** fetchSupabaseData FUNCTION **********
         async function fetchSupabaseData(viewName) {
             try {
                 // نستخدم علامة النجمة (*) فقط لجلب جميع الأعمدة المتاحة في الـ View
@@ -172,7 +172,7 @@
                 return [];
             }
         }
-        // ********** END OF MODIFIED fetchSupabaseData FUNCTION **********
+        // ********** END of fetchSupabaseData FUNCTION **********
 
         // --- Icons ---
         const Icons = {
@@ -266,16 +266,20 @@
             return dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
         };
 
-        // ********** calculateChange FUNCTION (Uses DB previous_price) **********
+        // ********** calculateChange FUNCTION (Enhanced for DB previous_price) **********
         const calculateChange = (currentPrice, previousPrice) => {
-            // نتحقق مما إذا كان السعر السابق موجوداً 
-            if (previousPrice === null || previousPrice === undefined) return { percent: 0, direction: 'neutral' };
+            // نتحقق مما إذا كان السعر السابق موجوداً و ليس null, undefined, أو 0
+            if (previousPrice === null || previousPrice === undefined || parseFloat(previousPrice) === 0) {
+                return { percent: 0, direction: 'neutral' };
+            }
 
             const oldPrice = parseFloat(previousPrice);
             const current = parseFloat(currentPrice);
             
             // إذا كان السعر السابق صفراً أو لم يتغير
-            if (oldPrice === 0 || Math.abs(current - oldPrice) < 0.001) return { percent: 0, direction: 'neutral' };
+            if (oldPrice === 0 || isNaN(oldPrice) || Math.abs(current - oldPrice) < 0.001) {
+                return { percent: 0, direction: 'neutral' };
+            }
             
             const diff = current - oldPrice;
             const percent = (diff / oldPrice) * 100;
@@ -449,15 +453,13 @@
                 else document.documentElement.classList.remove('dark');
             }, [darkMode]);
 
-            // ********** START OF loadData FUNCTION (Uses DB previous_price) **********
+            // ********** loadData FUNCTION (Uses DB previous_price) **********
             const loadData = async () => {
                 setLoading(true);
                 const [currencies, gold] = await Promise.all([
                     fetchSupabaseData("currency_rates_api"),
                     fetchSupabaseData("gold_rates_api")
                 ]);
-
-                // *** تم إزالة قراءة وكتابة localStorage هنا ***
 
                 const enrichedCurrencies = currencies.map(c => {
                     const { code } = getFlagAndCode(c.name);
@@ -490,13 +492,11 @@
                 
                 const usd = enrichedCurrencies.find(c => c.name.includes("دولار"));
                 if (usd) setCalcSource(usd);
-
-                // *** تم إزالة أي حفظ لبيانات الأسعار في Local Storage هنا ***
                 
                 setLoading(false);
                 if (window.lucide) setTimeout(() => window.lucide.createIcons(), 100);
             };
-            // ********** END OF loadData FUNCTION **********
+            // ********** END of loadData FUNCTION **********
 
             const fetchGlobalRates = async () => {
                 const now = Date.now();
