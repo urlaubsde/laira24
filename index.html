@@ -48,7 +48,7 @@
             animation: slideDown 0.5s ease-out forwards;
         }
 
-        /* Animations from original code */
+        /* Animations */
         @keyframes pulse-green {
             0% { background-color: rgba(46, 208, 110, 0.2); }
             100% { background-color: transparent; }
@@ -67,14 +67,6 @@
         }
         @keyframes draw {
             to { stroke-dashoffset: 0; }
-        }
-
-        .fade-out {
-            animation: fadeOut 0.5s ease-out forwards;
-        }
-        @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; visibility: hidden; }
         }
     </style>
     
@@ -114,15 +106,11 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useRef } = React;
         
-        // --- Database Config ---
-        // تأكد من صحة هذه المفاتيح
+        // --- Config ---
         const SUPABASE_URL = "https://xcmovzkbpumvufvmahew.supabase.co"; 
         const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhjbW92emticHVtdnVmdm1haGV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2MTc2MjYsImV4cCI6MjA3OTE5MzYyNn0.aLxh6TSQ6pznFoeWpgnbdDYv1eJBNKtcdonyLhzJUZs";
-        
-        // --- Global API Config ---
         const CURRENCY_API_KEY = "cur_live_CDxQbX4wFRag1Je6lH4NbngQ3ifR7dRF4bQR6azA";
         const GLOBAL_CACHE_DURATION = 45 * 60 * 1000;
-
         const SPREAD_PERCENTAGE = 0.005;
 
         const GLOBAL_DISPLAY_MAP = {
@@ -142,37 +130,20 @@
             CNY: { name: "يوان صيني", flag: "🇨🇳" }
         };
 
-        // ********** fetchSupabaseData FUNCTION **********
+        // ********** API **********
         async function fetchSupabaseData(viewName) {
             try {
-                // نستخدم علامة النجمة (*) فقط لجلب جميع الأعمدة المتاحة في الـ View
-                const selectColumns = "*"; 
-
-                // نستخدم الـ 'select' كـ Query Parameter بدلاً من إضافته إلى الرابط مباشرة لتجنب الأخطاء
-                const url = `${SUPABASE_URL}/rest/v1/${viewName}?select=${selectColumns}`;
-                
+                const url = `${SUPABASE_URL}/rest/v1/${viewName}?select=*`;
                 const res = await fetch(url, { 
-                    headers: {
-                        "apikey": ANON_KEY,
-                        "Authorization": "Bearer " + ANON_KEY
-                    }
+                    headers: { "apikey": ANON_KEY, "Authorization": "Bearer " + ANON_KEY }
                 });
-
-                // تحقق من حالة استجابة الشبكة (مثل 404 أو 401)
-                if (!res.ok) {
-                    const errorText = await res.text();
-                    // طباعة الخطأ كاملاً في الكونسول للمساعدة في التصحيح
-                    console.error(`Supabase API Error for ${viewName}: ${res.status} - ${errorText}`);
-                    return [];
-                }
-
+                if (!res.ok) return [];
                 return await res.json();
             } catch (error) {
                 console.error("Error fetching data:", error);
                 return [];
             }
         }
-        // ********** END of fetchSupabaseData FUNCTION **********
 
         // --- Icons ---
         const Icons = {
@@ -182,7 +153,6 @@
             Coins: () => <i data-lucide="coins" className="w-6 h-6"></i>,
             Settings: () => <i data-lucide="settings" className="w-5 h-5"></i>,
             Globe: () => <i data-lucide="globe" className="w-6 h-6"></i>,
-            ArrowRight: () => <i data-lucide="arrow-right" className="w-5 h-5"></i>,
             Refresh: () => <i data-lucide="refresh-cw" className="w-4 h-4"></i>,
             Moon: () => <i data-lucide="moon" className="w-5 h-5"></i>,
             Sun: () => <i data-lucide="sun" className="w-5 h-5"></i>,
@@ -194,11 +164,16 @@
             Shield: () => <i data-lucide="shield-check" className="w-6 h-6"></i>,
             Zap: () => <i data-lucide="zap" className="w-6 h-6"></i>,
             Wallet: () => <i data-lucide="wallet" className="w-6 h-6"></i>,
-            X: () => <i data-lucide="x" className="w-6 h-6"></i>,
+            X: () => <i data-lucide="x" className="w-5 h-5"></i>,
             Clock: () => <i data-lucide="clock" className="w-4 h-4"></i>,
             Target: () => <i data-lucide="target" className="w-4 h-4"></i>,
             ArrowDownUp: () => <i data-lucide="arrow-up-down" className="w-4 h-4"></i>,
-            Download: () => <i data-lucide="download" className="w-5 h-5"></i>
+            Download: () => <i data-lucide="download" className="w-5 h-5"></i>,
+            Move: () => <i data-lucide="move" className="w-4 h-4"></i>,
+            ArrowUp: () => <i data-lucide="arrow-up" className="w-5 h-5"></i>,
+            ArrowDown: () => <i data-lucide="arrow-down" className="w-5 h-5"></i>,
+            Info: () => <i data-lucide="info" className="w-4 h-4"></i>,
+            Gem: () => <i data-lucide="gem" className="w-4 h-4"></i>
         };
 
         const IconRenderer = ({ icon }) => {
@@ -210,14 +185,13 @@
             </span>;
         };
 
-        // --- Chart Components ---
+        // --- Components ---
         const generateChartData = (basePrice, points = 20, volatility = 0.02) => {
             let data = [];
             let current = basePrice;
             for (let i = 0; i < points; i++) {
-                if (i === points - 1) {
-                    data.push(basePrice);
-                } else {
+                if (i === points - 1) data.push(basePrice);
+                else {
                     const change = current * (Math.random() * volatility - (volatility / 2));
                     current += change;
                     data.push(current);
@@ -226,9 +200,8 @@
             return data;
         };
 
-        const LineChart = ({ data, color = "#2ed06e" }) => {
+        const LineChart = ({ data, color = "#2ed06e", height = 120, showAxis = true }) => {
             if (!data || data.length === 0) return null;
-            const height = 120;
             const width = 300;
             const padding = 5;
             const min = Math.min(...data);
@@ -242,52 +215,41 @@
             const areaPoints = `${points} ${width},${height} 0,${height}`;
 
             return (
-                <div className="w-full h-40 relative select-none">
+                <div className="w-full relative select-none" style={{ height: height + 'px' }}>
                     <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-full overflow-visible">
                         <defs>
-                            <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+                            <linearGradient id={`chartGradient-${color}`} x1="0" x2="0" y1="0" y2="1">
                                 <stop offset="0%" stopColor={color} stopOpacity="0.4" />
                                 <stop offset="100%" stopColor={color} stopOpacity="0" />
                             </linearGradient>
                         </defs>
-                        <path d={`M ${areaPoints}`} fill="url(#chartGradient)" stroke="none" />
+                        <path d={`M ${areaPoints}`} fill={`url(#chartGradient-${color})`} stroke="none" />
                         <path d={`M ${points}`} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="chart-path" />
                         <circle cx={width} cy={height - ((data[data.length - 1] - min) / range) * (height - padding * 2) - padding} r="4" fill={color} stroke="white" strokeWidth="2" />
                     </svg>
-                    <div className="absolute top-0 left-0 text-[10px] text-gray-400 font-mono bg-white/80 dark:bg-gray-800/80 px-1 rounded">High: {max.toLocaleString('en-US', {maximumFractionDigits: 0})}</div>
-                    <div className="absolute bottom-0 left-0 text-[10px] text-gray-400 font-mono bg-white/80 dark:bg-gray-800/80 px-1 rounded">Low: {min.toLocaleString('en-US', {maximumFractionDigits: 0})}</div>
+                    {showAxis && (
+                        <>
+                            <div className="absolute top-0 left-0 text-[10px] text-gray-400 font-mono bg-white/80 dark:bg-gray-800/80 px-1 rounded">High: {max.toLocaleString('en-US', {maximumFractionDigits: 0})}</div>
+                            <div className="absolute bottom-0 left-0 text-[10px] text-gray-400 font-mono bg-white/80 dark:bg-gray-800/80 px-1 rounded">Low: {min.toLocaleString('en-US', {maximumFractionDigits: 0})}</div>
+                        </>
+                    )}
                 </div>
             );
         };
 
-        // --- Helpers ---
         const formatLastUpdate = (dateObj) => {
             if (!dateObj) return "Now";
             return dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
         };
 
-        // ********** calculateChange FUNCTION (Enhanced for DB previous_price) **********
         const calculateChange = (currentPrice, previousPrice) => {
-            // نتحقق مما إذا كان السعر السابق موجوداً و ليس null, undefined, أو 0
-            if (previousPrice === null || previousPrice === undefined || parseFloat(previousPrice) === 0) {
-                return { percent: 0, direction: 'neutral' };
-            }
-
+            if (!previousPrice || parseFloat(previousPrice) === 0) return { percent: 0, direction: 'neutral' };
             const oldPrice = parseFloat(previousPrice);
             const current = parseFloat(currentPrice);
-            
-            // إذا كان السعر السابق صفراً أو لم يتغير
-            if (oldPrice === 0 || isNaN(oldPrice) || Math.abs(current - oldPrice) < 0.001) {
-                return { percent: 0, direction: 'neutral' };
-            }
-            
             const diff = current - oldPrice;
             const percent = (diff / oldPrice) * 100;
-            
             return { percent: Math.abs(percent).toFixed(2), direction: diff > 0 ? 'up' : 'down' };
         };
-        // ********** END of calculateChange FUNCTION **********
-
 
         const getFlagAndCode = (name) => {
             if (name.includes("دولار")) return { flag: "🇺🇸", code: "USD" };
@@ -302,79 +264,242 @@
             return { flag: "🌍", code: "GBL" };
         };
 
-        // --- Install Prompt Component (PWA) ---
+        // --- Custom Elegant Close Button ---
+        const ElegantCloseButton = ({ onClick }) => (
+            <button 
+                onClick={onClick} 
+                className="group relative flex items-center justify-center w-10 h-10 rounded-full bg-white/60 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-600/50 shadow-sm transition-all duration-300 hover:bg-red-50 hover:border-red-200 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:border-red-900/30 dark:hover:text-red-400 hover:scale-110 active:scale-95 z-50"
+            >
+                <div className="transition-transform duration-300 group-hover:rotate-90">
+                    <IconRenderer icon={Icons.X} />
+                </div>
+            </button>
+        );
+
+        // --- Currency Modal ---
+        const CurrencyDetailModal = ({ currency, onClose, onMove, time }) => {
+            if (!currency) return null;
+            const { flag, code } = getFlagAndCode(currency.name);
+            const isUp = currency.stats?.direction === 'up';
+            const sell = parseFloat(currency.sell_price);
+            const buy = parseFloat(currency.buy_price);
+            const spread = sell - buy;
+            const reverseRate = sell > 0 ? (1 / sell).toFixed(7) : 0;
+            const chartData = useMemo(() => generateChartData(sell, 15, 0.01), [sell]);
+
+            return (
+                <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-gray-100 dark:border-gray-700 relative overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-10 duration-300" onClick={e => e.stopPropagation()}>
+                        
+                        <div className="flex justify-between items-start mb-6 relative z-10">
+                            <div className="flex items-center gap-4">
+                                <div className="w-16 h-16 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-4xl shadow-inner border border-gray-100 dark:border-gray-600">{flag}</div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-800 dark:text-white">{currency.name}</h2>
+                                    <div className="flex items-center gap-2">
+                                        <span className="bg-brand-primary/10 text-brand-primary text-xs font-bold px-2 py-0.5 rounded-full">{code}</span>
+                                        <span className="text-xs text-gray-400 font-mono">1 {code} = {sell.toLocaleString('en-US')} SYP</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <ElegantCloseButton onClick={onClose} />
+                        </div>
+
+                        <div className="absolute top-20 left-0 right-0 opacity-10 pointer-events-none">
+                            <LineChart data={chartData} color={isUp ? "#2ed06e" : "#ef4444"} height={100} showAxis={false} />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 mb-6 relative z-10">
+                            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-600">
+                                <span className="text-xs text-gray-400 block mb-1">سعر المبيع</span>
+                                <span className={`text-xl font-bold num-en ${isUp ? 'text-brand-dark dark:text-brand-light' : 'text-red-500'}`}>{sell.toLocaleString('en-US')}</span>
+                            </div>
+                            <div className="bg-gray-50 dark:bg-gray-700/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-600">
+                                <span className="text-xs text-gray-400 block mb-1">سعر الشراء</span>
+                                <span className="text-xl font-bold num-en text-brand-primary">{buy.toLocaleString('en-US')}</span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-3 mb-6 relative z-10">
+                            <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-200 dark:border-gray-700">
+                                <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2"><IconRenderer icon={Icons.Clock} />آخر تحديث</span>
+                                <span className="font-mono font-bold text-gray-700 dark:text-gray-200 num-en">{formatLastUpdate(time)}</span>
+                            </div>
+                             <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-200 dark:border-gray-700">
+                                <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2"><IconRenderer icon={Icons.Calculator} />سعر التحويل العكسي</span>
+                                <div className="text-right">
+                                    <span className="font-mono font-bold text-gray-700 dark:text-gray-200 num-en block">{reverseRate}</span>
+                                    <span className="text-[10px] text-gray-400">1 ليرة سورية = {code}</span>
+                                </div>
+                            </div>
+                            <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-200 dark:border-gray-700">
+                                <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2"><IconRenderer icon={Icons.Info} />الفارق (Spread)</span>
+                                <span className="font-mono font-bold text-gray-700 dark:text-gray-200 num-en">{spread.toLocaleString('en-US')} <span className="text-[10px]">ل.س</span></span>
+                            </div>
+                        </div>
+
+                        <div className="bg-gray-100 dark:bg-gray-900 rounded-xl p-3 flex justify-between items-center">
+                            <span className="text-xs font-bold text-gray-500">ترتيب العرض:</span>
+                            <div className="flex gap-2">
+                                <button onClick={() => onMove(code, -1)} className="flex items-center gap-1 bg-white dark:bg-gray-700 px-3 py-2 rounded-lg shadow-sm text-xs font-bold hover:bg-gray-50 dark:text-white transition active:scale-95"><IconRenderer icon={Icons.ArrowUp} /> للأعلى</button>
+                                <button onClick={() => onMove(code, 1)} className="flex items-center gap-1 bg-white dark:bg-gray-700 px-3 py-2 rounded-lg shadow-sm text-xs font-bold hover:bg-gray-50 dark:text-white transition active:scale-95"><IconRenderer icon={Icons.ArrowDown} /> للأسفل</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- NEW: Gold Detail Modal (Feature Request) ---
+        const GoldDetailModal = ({ gold, onClose, onMove, time }) => {
+            if (!gold) return null;
+            const isUp = gold.stats?.direction === 'up';
+            const sell = parseFloat(gold.sell_price);
+            const buy = parseFloat(gold.buy_price);
+            const spread = sell - buy;
+            const chartData = useMemo(() => generateChartData(sell, 15, 0.015), [sell]);
+            const goldKey = gold.description; // Identifier for sorting
+
+            return (
+                <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
+                    <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-brand-primary/20 dark:border-brand-primary/10 relative overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-10 duration-300" onClick={e => e.stopPropagation()}>
+                        
+                        {/* Header */}
+                        <div className="flex justify-between items-start mb-6 relative z-10">
+                            <div className="flex items-center gap-4">
+                                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 flex items-center justify-center text-4xl shadow-inner border border-yellow-200 dark:border-yellow-700">🏆</div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-gray-800 dark:text-white">{gold.description}</h2>
+                                    <div className="flex items-center gap-2">
+                                        <span className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-400 text-xs font-bold px-2 py-0.5 rounded-full">GOLD</span>
+                                        <span className="text-xs text-gray-400 font-mono">تحديث الصاغة</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <ElegantCloseButton onClick={onClose} />
+                        </div>
+
+                        {/* Chart BG */}
+                        <div className="absolute top-20 left-0 right-0 opacity-10 pointer-events-none">
+                            <LineChart data={chartData} color="#eab308" height={100} showAxis={false} />
+                        </div>
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-2 gap-4 mb-6 relative z-10">
+                            <div className="bg-yellow-50/50 dark:bg-gray-700/50 p-4 rounded-2xl border border-yellow-100 dark:border-gray-600">
+                                <span className="text-xs text-gray-400 block mb-1">سعر المبيع</span>
+                                <span className="text-xl font-bold num-en text-gray-800 dark:text-white">{sell.toLocaleString('en-US')}</span>
+                            </div>
+                            <div className="bg-yellow-50/50 dark:bg-gray-700/50 p-4 rounded-2xl border border-yellow-100 dark:border-gray-600">
+                                <span className="text-xs text-gray-400 block mb-1">سعر الشراء</span>
+                                <span className="text-xl font-bold num-en text-yellow-600">{buy.toLocaleString('en-US')}</span>
+                            </div>
+                        </div>
+
+                        {/* Info List */}
+                        <div className="space-y-3 mb-6 relative z-10">
+                            <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-200 dark:border-gray-700">
+                                <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2"><IconRenderer icon={Icons.Clock} />آخر تحديث</span>
+                                <span className="font-mono font-bold text-gray-700 dark:text-gray-200 num-en">{formatLastUpdate(time)}</span>
+                            </div>
+                             <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-200 dark:border-gray-700">
+                                <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2"><IconRenderer icon={Icons.Gem} />عيار الذهب</span>
+                                <span className="font-mono font-bold text-gray-700 dark:text-gray-200">{gold.description}</span>
+                            </div>
+                            <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-200 dark:border-gray-700">
+                                <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2"><IconRenderer icon={Icons.Info} />فرق الصياغة (Spread)</span>
+                                <span className="font-mono font-bold text-gray-700 dark:text-gray-200 num-en">{spread.toLocaleString('en-US')} <span className="text-[10px]">ل.س</span></span>
+                            </div>
+                        </div>
+
+                        {/* Reorder Controls */}
+                        <div className="bg-gray-100 dark:bg-gray-900 rounded-xl p-3 flex justify-between items-center">
+                            <span className="text-xs font-bold text-gray-500">ترتيب العرض:</span>
+                            <div className="flex gap-2">
+                                <button onClick={() => onMove(goldKey, -1)} className="flex items-center gap-1 bg-white dark:bg-gray-700 px-3 py-2 rounded-lg shadow-sm text-xs font-bold hover:bg-gray-50 dark:text-white transition active:scale-95"><IconRenderer icon={Icons.ArrowUp} /> للأعلى</button>
+                                <button onClick={() => onMove(goldKey, 1)} className="flex items-center gap-1 bg-white dark:bg-gray-700 px-3 py-2 rounded-lg shadow-sm text-xs font-bold hover:bg-gray-50 dark:text-white transition active:scale-95"><IconRenderer icon={Icons.ArrowDown} /> للأسفل</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const RateCard = ({ title, buy, sell, icon, code, stats, time, onClick, draggable, onDragStart, onDragEnter, onDragEnd }) => {
+            const isUp = stats?.direction === 'up';
+            const isDown = stats?.direction === 'down';
+            return (
+                <div 
+                    onClick={onClick}
+                    draggable={draggable}
+                    onDragStart={onDragStart}
+                    onDragEnter={onDragEnter}
+                    onDragEnd={onDragEnd}
+                    className={`bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 mb-3 flex items-center justify-between transition-all-300 hover:shadow-md cursor-pointer active:scale-[0.98] ${isUp ? 'animate-up' : isDown ? 'animate-down' : ''}`}
+                >
+                    <div className="flex items-center gap-3">
+                        {draggable && <div className="text-gray-300 dark:text-gray-600 hidden sm:block cursor-grab"><IconRenderer icon={Icons.Move} /></div>}
+                        <div className="w-12 h-12 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-2xl shadow-inner relative">
+                            {icon}
+                            {stats && stats.direction !== 'neutral' && <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center text-[10px] font-bold ${isUp ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>{isUp ? '↑' : '↓'}</div>}
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-gray-800 dark:text-white">{title}</h3>
+                            <div className="flex items-center gap-2"><span className="text-xs text-gray-400 font-mono">{code}</span>{stats && <span className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1 font-bold num-en ${isUp ? 'text-green-600 bg-green-50' : isDown ? 'text-red-600 bg-red-50' : 'text-gray-400'}`}>{isUp ? <IconRenderer icon={Icons.TrendUp} /> : isDown ? <IconRenderer icon={Icons.TrendDown} /> : <IconRenderer icon={Icons.Minus} />}{stats.percent}%</span>}</div>
+                        </div>
+                    </div>
+                    <div className="flex gap-4 text-left">
+                        <div className="flex flex-col items-end"><span className="text-[10px] text-gray-400 uppercase tracking-wider">مبيع</span><span className={`font-bold text-lg num-en ${isDown ? 'text-red-500' : 'text-brand-dark dark:text-brand-light'}`}>{parseFloat(sell).toLocaleString('en-US', { maximumFractionDigits: 3 })}</span></div>
+                        <div className="w-[1px] bg-gray-200 dark:bg-gray-600 h-8 self-center"></div>
+                        <div className="flex flex-col items-end"><span className="text-[10px] text-gray-400 uppercase tracking-wider">شراء</span><span className={`font-bold text-lg num-en ${isUp ? 'text-green-500' : 'text-brand-primary'}`}>{parseFloat(buy).toLocaleString('en-US', { maximumFractionDigits: 3 })}</span></div>
+                    </div>
+                </div>
+            );
+        };
+
         const InstallPrompt = () => {
             const [deferredPrompt, setDeferredPrompt] = useState(null);
             const [showBanner, setShowBanner] = useState(false);
-
             useEffect(() => {
-                const handler = (e) => {
-                    e.preventDefault();
-                    setDeferredPrompt(e);
-                    setShowBanner(true);
-                };
+                const handler = (e) => { e.preventDefault(); setDeferredPrompt(e); setShowBanner(true); };
                 window.addEventListener('beforeinstallprompt', handler);
                 return () => window.removeEventListener('beforeinstallprompt', handler);
             }, []);
-
             const handleInstallClick = () => {
                 if (deferredPrompt) {
                     deferredPrompt.prompt();
-                    deferredPrompt.userChoice.then((choiceResult) => {
-                        if (choiceResult.outcome === 'accepted') {
-                            console.log('User accepted the install prompt');
-                        }
-                        setDeferredPrompt(null);
-                        setShowBanner(false);
-                    });
+                    deferredPrompt.userChoice.then((res) => { setDeferredPrompt(null); setShowBanner(false); });
                 }
             };
-
             if (!showBanner) return null;
-
             return (
                 <div className="fixed top-0 left-0 right-0 z-[60] p-4 install-banner">
                     <div className="bg-brand-dark text-white rounded-2xl shadow-2xl p-4 flex items-center justify-between border border-brand-primary/30">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-brand-primary rounded-xl flex items-center justify-center font-bold text-brand-dark">24</div>
-                            <div>
-                                <h3 className="font-bold text-sm">تطبيق الليرة 24</h3>
-                                <p className="text-xs text-brand-light opacity-80">تثبيت للوصول السريع</p>
-                            </div>
+                            <div><h3 className="font-bold text-sm">تطبيق الليرة 24</h3><p className="text-xs text-brand-light opacity-80">تثبيت للوصول السريع</p></div>
                         </div>
                         <div className="flex items-center gap-2">
                             <button onClick={() => setShowBanner(false)} className="p-2 text-gray-400 hover:text-white"><IconRenderer icon={Icons.X} /></button>
-                            <button onClick={handleInstallClick} className="bg-brand-primary text-brand-dark px-4 py-2 rounded-xl text-xs font-bold hover:bg-white transition flex items-center gap-2">
-                                <IconRenderer icon={Icons.Download} /> تثبيت
-                            </button>
+                            <button onClick={handleInstallClick} className="bg-brand-primary text-brand-dark px-4 py-2 rounded-xl text-xs font-bold hover:bg-white transition flex items-center gap-2"><IconRenderer icon={Icons.Download} /> تثبيت</button>
                         </div>
                     </div>
                 </div>
             );
         };
 
-        // --- Splash Screen Component ---
-        const SplashScreen = () => {
-            return (
-                <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-brand-dark transition-all duration-500">
-                     <div className="flex flex-col items-center animate-in fade-in zoom-in duration-700">
-                        <div className="w-24 h-24 bg-brand-primary rounded-full flex items-center justify-center text-brand-dark font-bold text-4xl mb-6 shadow-2xl shadow-brand-primary/20 relative">
-                             <div className="absolute inset-0 rounded-full border-4 border-white/10 animate-pulse"></div>
-                            24
-                        </div>
-                        <h1 className="text-3xl font-bold text-white mb-2 tracking-wide">الليرة 24</h1>
-                        <p className="text-brand-light text-sm opacity-90 font-light">أسعار الذهب والعملات لحظة بلحظة</p>
+        const SplashScreen = () => (
+            <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-brand-dark transition-all duration-500">
+                <div className="flex flex-col items-center animate-in fade-in zoom-in duration-700">
+                    <div className="w-24 h-24 bg-brand-primary rounded-full flex items-center justify-center text-brand-dark font-bold text-4xl mb-6 shadow-2xl shadow-brand-primary/20 relative">
+                        <div className="absolute inset-0 rounded-full border-4 border-white/10 animate-pulse"></div>24
                     </div>
-                    <div className="absolute bottom-12">
-                         <div className="flex gap-1">
-                            <div className="w-2 h-2 bg-brand-primary rounded-full animate-bounce" style={{animationDelay: '0s'}}></div>
-                            <div className="w-2 h-2 bg-brand-primary rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                            <div className="w-2 h-2 bg-brand-primary rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                        </div>
-                    </div>
+                    <h1 className="text-3xl font-bold text-white mb-2 tracking-wide">الليرة 24</h1>
+                    <p className="text-brand-light text-sm opacity-90 font-light">أسعار الذهب والعملات لحظة بلحظة</p>
                 </div>
-            );
-        };
+                <div className="absolute bottom-12"><div className="flex gap-1"><div className="w-2 h-2 bg-brand-primary rounded-full animate-bounce" style={{animationDelay: '0s'}}></div><div className="w-2 h-2 bg-brand-primary rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div><div className="w-2 h-2 bg-brand-primary rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div></div></div>
+            </div>
+        );
 
         // --- Main App ---
         function App() {
@@ -383,146 +508,87 @@
             const [currencyData, setCurrencyData] = useState([]);
             const [globalRawData, setGlobalRawData] = useState(null);
             const [baseCurrency, setBaseCurrency] = useState('USD');
-            
             const [convAmount, setConvAmount] = useState(100);
             const [convFrom, setConvFrom] = useState('USD');
             const [convTo, setConvTo] = useState('EUR');
-            
             const [goldData, setGoldData] = useState([]);
             const [loading, setLoading] = useState(true);
             const [globalLoading, setGlobalLoading] = useState(false);
             const [darkMode, setDarkMode] = useState(false);
-            
             const [goldCalcWeight, setGoldCalcWeight] = useState(''); 
             const [goldCalcFee, setGoldCalcFee] = useState('');       
             const [selectedGoldId, setSelectedGoldId] = useState(null);
-            
             const [dbLastUpdate, setDbLastUpdate] = useState(new Date());
             const [apiLastUpdate, setApiLastUpdate] = useState(new Date());
-
-            const [showGold, setShowGold] = useState(() => {
-                const saved = localStorage.getItem('showGoldOnHome');
-                return saved !== 'false'; 
-            });
-
-            const [pinned, setPinned] = useState(() => {
-                try { return JSON.parse(localStorage.getItem('pinnedCurrencies')) || ['USD', 'EUR', 'TRY', 'SAR']; } 
-                catch { return ['USD', 'EUR', 'TRY', 'SAR']; }
-            });
-            
+            const [showGold, setShowGold] = useState(() => { return localStorage.getItem('showGoldOnHome') !== 'false'; });
             const [calcAmount, setCalcAmount] = useState(100);
             const [calcSource, setCalcSource] = useState(null);
             const [chartTimeframe, setChartTimeframe] = useState('1D');
             const [chartData, setChartData] = useState([]);
 
-            useEffect(() => {
-                const timer = setTimeout(() => {
-                    setShowSplash(false);
-                }, 3000);
-                return () => clearTimeout(timer);
-            }, []);
-
-            useEffect(() => { localStorage.setItem('pinnedCurrencies', JSON.stringify(pinned)); }, [pinned]);
-            useEffect(() => { localStorage.setItem('showGoldOnHome', showGold); }, [showGold]);
-
-            useEffect(() => { loadData(); }, []);
+            // Sort & Drag State - Currency
+            const [pinned, setPinned] = useState(() => { try { return JSON.parse(localStorage.getItem('pinnedCurrencies')) || ['USD', 'EUR', 'TRY', 'SAR']; } catch { return ['USD', 'EUR', 'TRY', 'SAR']; } });
+            const [selectedCurrency, setSelectedCurrency] = useState(null);
             
-            useEffect(() => {
-                if (goldData.length > 0 && !selectedGoldId) {
-                    setSelectedGoldId(goldData[0].id || goldData[0].description); 
-                }
-            }, [goldData]);
+            // Sort & Drag State - Gold
+            const [goldOrder, setGoldOrder] = useState(() => { try { return JSON.parse(localStorage.getItem('goldOrder')) || []; } catch { return []; } });
+            const [selectedGoldCard, setSelectedGoldCard] = useState(null);
 
+            const dragItem = useRef();
+            const dragOverItem = useRef();
+
+            useEffect(() => { setTimeout(() => setShowSplash(false), 3000); }, []);
+            useEffect(() => { localStorage.setItem('pinnedCurrencies', JSON.stringify(pinned)); }, [pinned]);
+            useEffect(() => { localStorage.setItem('goldOrder', JSON.stringify(goldOrder)); }, [goldOrder]);
+            useEffect(() => { localStorage.setItem('showGoldOnHome', showGold); }, [showGold]);
+            useEffect(() => { loadData(); }, []);
+            useEffect(() => { if (goldData.length > 0 && !selectedGoldId) setSelectedGoldId(goldData[0].id || goldData[0].description); }, [goldData]);
             useEffect(() => {
                 if (calcSource) {
                     const base = parseFloat(calcSource.sell_price);
-                    let points = 24; let volatility = 0.01;
-                    switch(chartTimeframe) {
-                        case '1D': points = 24; volatility = 0.005; break;
-                        case '1W': points = 7; volatility = 0.015; break;
-                        case '1M': points = 30; volatility = 0.03; break;
-                        case '1Y': points = 12; volatility = 0.10; break;
-                    }
+                    let points = 24, volatility = 0.01;
+                    if(chartTimeframe==='1W'){points=7;volatility=0.015;}else if(chartTimeframe==='1M'){points=30;volatility=0.03;}else if(chartTimeframe==='1Y'){points=12;volatility=0.10;}
                     setChartData(generateChartData(base, points, volatility));
                 }
             }, [calcSource, chartTimeframe]);
-
             useEffect(() => { if (activeTab === 'global') fetchGlobalRates(); }, [activeTab]);
-            useEffect(() => {
-                if (darkMode) document.documentElement.classList.add('dark');
-                else document.documentElement.classList.remove('dark');
-            }, [darkMode]);
+            useEffect(() => { if (darkMode) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); }, [darkMode]);
 
-            // ********** loadData FUNCTION (Uses DB previous_price) **********
             const loadData = async () => {
                 setLoading(true);
-                const [currencies, gold] = await Promise.all([
-                    fetchSupabaseData("currency_rates_api"),
-                    fetchSupabaseData("gold_rates_api")
-                ]);
-
+                const [currencies, gold] = await Promise.all([fetchSupabaseData("currency_rates_api"), fetchSupabaseData("gold_rates_api")]);
                 const enrichedCurrencies = currencies.map(c => {
                     const { code } = getFlagAndCode(c.name);
-                    const sellPrice = parseFloat(c.sell_price);
-                    
-                    // استخدام حقل previous_sell_price من البيانات المسترجعة
-                    const previousSellPrice = c.previous_sell_price; 
-
-                    // حساب النسبة المئوية بناءً على السعر الحالي والسعر السابق من DB
-                    const stats = calculateChange(sellPrice, previousSellPrice);
-                    
+                    const stats = calculateChange(c.sell_price, c.previous_sell_price);
                     return { ...c, stats, code };
                 });
-
                 const enrichedGold = gold.map(g => {
-                    const sellPrice = parseFloat(g.sell_price);
-                    
-                    // استخدام حقل previous_sell_price من البيانات المسترجعة
-                    const previousSellPrice = g.previous_sell_price;
-
-                    const stats = calculateChange(sellPrice, previousSellPrice);
-                    
+                    const stats = calculateChange(g.sell_price, g.previous_sell_price);
                     return { ...g, stats };
                 });
-
-                setDbLastUpdate(new Date()); 
-
+                setDbLastUpdate(new Date());
                 setCurrencyData(enrichedCurrencies);
                 setGoldData(enrichedGold);
                 
+                // Initialize Gold Order if empty
+                if (goldOrder.length === 0 && enrichedGold.length > 0) {
+                    setGoldOrder(enrichedGold.map(g => g.description));
+                }
+
                 const usd = enrichedCurrencies.find(c => c.name.includes("دولار"));
                 if (usd) setCalcSource(usd);
-                
                 setLoading(false);
                 if (window.lucide) setTimeout(() => window.lucide.createIcons(), 100);
             };
-            // ********** END of loadData FUNCTION **********
 
             const fetchGlobalRates = async () => {
                 const now = Date.now();
                 const cachedGlobal = localStorage.getItem('globalRatesRaw');
                 const lastGlobalFetch = localStorage.getItem('globalRatesTime');
-                const cachedMeta = localStorage.getItem('globalRatesMeta');
-
                 if (cachedGlobal && lastGlobalFetch && (now - parseInt(lastGlobalFetch) < GLOBAL_CACHE_DURATION)) {
                     setGlobalRawData(JSON.parse(cachedGlobal));
-                    if (cachedMeta) {
-                        try {
-                            const meta = JSON.parse(cachedMeta);
-                            if (meta.last_updated_at) {
-                                setApiLastUpdate(new Date(meta.last_updated_at));
-                            } else {
-                                setApiLastUpdate(new Date(parseInt(lastGlobalFetch)));
-                            }
-                        } catch (e) {
-                            setApiLastUpdate(new Date(parseInt(lastGlobalFetch)));
-                        }
-                    } else {
-                        setApiLastUpdate(new Date(parseInt(lastGlobalFetch)));
-                    }
                     return;
                 }
-
                 setGlobalLoading(true);
                 try {
                     const res = await fetch(`https://api.currencyapi.com/v3/latest?apikey=${CURRENCY_API_KEY}&base_currency=USD`);
@@ -531,27 +597,50 @@
                         setGlobalRawData(result.data);
                         localStorage.setItem('globalRatesRaw', JSON.stringify(result.data));
                         localStorage.setItem('globalRatesTime', now.toString());
-                        
-                        if (result.meta && result.meta.last_updated_at) {
-                            setApiLastUpdate(new Date(result.meta.last_updated_at));
-                            localStorage.setItem('globalRatesMeta', JSON.stringify(result.meta));
-                        } else {
-                            setApiLastUpdate(new Date(now));
-                            localStorage.removeItem('globalRatesMeta');
-                        }
+                        setApiLastUpdate(new Date());
                     }
-                } catch (error) {
-                    console.error("Error fetching global rates", error);
-                }
+                } catch (error) { console.error("Error global rates", error); }
                 setGlobalLoading(false);
             };
 
-            const togglePin = (code) => {
-                const newPinned = pinned.includes(code) ? pinned.filter(c => c !== code) : [...pinned, code];
+            // Currency Sort Handlers
+            const handleSort = () => {
+                let _pinned = [...pinned];
+                const draggedItemContent = _pinned.splice(dragItem.current, 1)[0];
+                _pinned.splice(dragOverItem.current, 0, draggedItemContent);
+                dragItem.current = null;
+                dragOverItem.current = null;
+                setPinned(_pinned);
+            };
+            const handleMoveCard = (code, direction) => {
+                const idx = pinned.indexOf(code);
+                if (idx === -1) return;
+                const newIdx = idx + direction;
+                if (newIdx < 0 || newIdx >= pinned.length) return;
+                const newPinned = [...pinned];
+                [newPinned[idx], newPinned[newIdx]] = [newPinned[newIdx], newPinned[idx]];
                 setPinned(newPinned);
             };
 
-            // --- UI Components ---
+            // Gold Sort Handlers (New)
+            const handleGoldSort = () => {
+                let _order = [...goldOrder];
+                const draggedItemContent = _order.splice(dragItem.current, 1)[0];
+                _order.splice(dragOverItem.current, 0, draggedItemContent);
+                dragItem.current = null;
+                dragOverItem.current = null;
+                setGoldOrder(_order);
+            };
+            const handleMoveGold = (desc, direction) => {
+                const idx = goldOrder.indexOf(desc);
+                if (idx === -1) return;
+                const newIdx = idx + direction;
+                if (newIdx < 0 || newIdx >= goldOrder.length) return;
+                const newOrder = [...goldOrder];
+                [newOrder[idx], newOrder[newIdx]] = [newOrder[newIdx], newOrder[idx]];
+                setGoldOrder(newOrder);
+            };
+
             const Header = ({ title, subtitle, time }) => (
                 <div className="bg-brand-dark text-white p-6 pb-12 rounded-b-[2.5rem] shadow-lg relative z-10 mb-[-2rem]">
                     <div className="flex justify-between items-center mb-4">
@@ -571,32 +660,11 @@
                 </div>
             );
 
-            const RateCard = ({ title, buy, sell, icon, code, stats }) => {
-                const isUp = stats?.direction === 'up';
-                const isDown = stats?.direction === 'down';
-                return (
-                    <div className={`bg-white dark:bg-gray-800 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 mb-3 flex items-center justify-between transition-all-300 hover:shadow-md ${isUp ? 'animate-up' : isDown ? 'animate-down' : ''}`}>
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-2xl shadow-inner relative">
-                                {icon}
-                                {stats && stats.direction !== 'neutral' && <div className={`absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white dark:border-gray-800 flex items-center justify-center text-[10px] font-bold ${isUp ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>{isUp ? '↑' : '↓'}</div>}
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-gray-800 dark:text-white">{title}</h3>
-                                <div className="flex items-center gap-2"><span className="text-xs text-gray-400 font-mono">{code}</span>{stats && <span className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1 font-bold num-en ${isUp ? 'text-green-600 bg-green-50' : isDown ? 'text-red-600 bg-red-50' : 'text-gray-400'}`}>{isUp ? <IconRenderer icon={Icons.TrendUp} /> : isDown ? <IconRenderer icon={Icons.TrendDown} /> : <IconRenderer icon={Icons.Minus} />}{stats.percent}%</span>}</div>
-                            </div>
-                        </div>
-                        <div className="flex gap-4 text-left">
-                            <div className="flex flex-col items-end"><span className="text-[10px] text-gray-400 uppercase tracking-wider">مبيع</span><span className={`font-bold text-lg num-en ${isDown ? 'text-red-500' : 'text-brand-dark dark:text-brand-light'}`}>{parseFloat(sell).toLocaleString('en-US', { maximumFractionDigits: 3 })}</span></div>
-                            <div className="w-[1px] bg-gray-200 dark:bg-gray-600 h-8 self-center"></div>
-                            <div className="flex flex-col items-end"><span className="text-[10px] text-gray-400 uppercase tracking-wider">شراء</span><span className={`font-bold text-lg num-en ${isUp ? 'text-green-500' : 'text-brand-primary'}`}>{parseFloat(buy).toLocaleString('en-US', { maximumFractionDigits: 3 })}</span></div>
-                        </div>
-                    </div>
-                );
-            };
-
             const renderHome = () => {
-                const visibleCurrencies = currencyData.filter(c => pinned.includes(c.code)).sort((a, b) => pinned.indexOf(a.code) - pinned.indexOf(b.code));
+                const visibleCurrencies = pinned.map(code => currencyData.find(c => c.code === code)).filter(Boolean);
+                // Get ordered gold data (Top 2)
+                const visibleGold = goldOrder.map(desc => goldData.find(g => g.description === desc)).filter(Boolean).slice(0, 2);
+                
                 return (
                     <div className="pb-24">
                         <Header title="أسعار الصرف الحالية" subtitle="مقابل الليرة السورية" time={dbLastUpdate} />
@@ -604,78 +672,24 @@
                             {loading ? <div className="text-center py-10 text-gray-400">جاري التحميل...</div> : (
                                 <>
                                     <div className="flex justify-between items-center mb-2 px-1"><span className="font-bold text-gray-700 dark:text-gray-200">العملات المفضلة</span><span className="text-xs text-brand-primary bg-brand-primary/10 px-2 py-1 rounded-full flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-brand-primary animate-pulse"></span>مباشر</span></div>
-                                    {visibleCurrencies.length > 0 ? visibleCurrencies.map((c, i) => { const { flag } = getFlagAndCode(c.name); return <RateCard key={i} title={c.name} buy={c.buy_price} sell={c.sell_price} icon={flag} code={c.code} stats={c.stats} />; }) : <div className="text-center py-8 text-gray-400 text-sm">لا توجد عملات مثبتة.</div>}
+                                    {visibleCurrencies.length > 0 ? visibleCurrencies.map((c, i) => { 
+                                        const { flag } = getFlagAndCode(c.name); 
+                                        return <RateCard key={c.code} title={c.name} buy={c.buy_price} sell={c.sell_price} icon={flag} code={c.code} stats={c.stats} onClick={() => setSelectedCurrency(c)} draggable={true} onDragStart={() => (dragItem.current = i)} onDragEnter={() => (dragOverItem.current = i)} onDragEnd={handleSort} />; 
+                                    }) : <div className="text-center py-8 text-gray-400 text-sm">لا توجد عملات مثبتة.</div>}
                                     
                                     {showGold && (
                                         <>
                                             <div className="flex justify-between items-center mb-2 px-1 mt-6"><span className="font-bold text-gray-700 dark:text-gray-200">أسعار الذهب (مختصر)</span></div>
-                                            {goldData.slice(0, 2).map((g, i) => <RateCard key={`g-${i}`} title={g.description} buy={g.buy_price} sell={g.sell_price} icon="🏆" code="GOLD" stats={g.stats} time={dbLastUpdate} />)}
+                                            {visibleGold.map((g, i) => (
+                                                <RateCard key={`g-${i}`} title={g.description} buy={g.buy_price} sell={g.sell_price} icon="🏆" code="GOLD" stats={g.stats} onClick={() => setSelectedGoldCard(g)} />
+                                            ))}
                                         </>
                                     )}
                                 </>
                             )}
                         </div>
-                    </div>
-                );
-            };
-
-            const renderGlobal = () => {
-                let convResult = 0;
-                if (globalRawData) {
-                    const fromRate = convFrom === 'USD' ? 1 : globalRawData[convFrom]?.value || 1;
-                    const toRate = convTo === 'USD' ? 1 : globalRawData[convTo]?.value || 1;
-                    convResult = (convAmount / fromRate) * toRate;
-                }
-                let displayList = [];
-                if (globalRawData) {
-                    let conversionFactor = 1;
-                    if (baseCurrency === 'EUR') {
-                        const eurRate = globalRawData['EUR']?.value;
-                        if (eurRate) conversionFactor = 1 / eurRate;
-                    }
-                    Object.keys(GLOBAL_DISPLAY_MAP).forEach(key => {
-                        if (key === baseCurrency) return;
-                        if (globalRawData[key]) {
-                            const rawRate = globalRawData[key].value;
-                            const baseRate = rawRate * conversionFactor;
-                            const sell = baseRate * (1 + SPREAD_PERCENTAGE);
-                            const buy = baseRate * (1 - SPREAD_PERCENTAGE);
-                            displayList.push({ code: key, buy: buy, sell: sell, ...GLOBAL_DISPLAY_MAP[key] });
-                        }
-                    });
-                }
-
-                return (
-                    <div className="pb-24">
-                        <Header title="الأسعار العالمية" subtitle="تحويل وحاسبة فورية" time={apiLastUpdate} />
-                        <div className="px-4 pt-12">
-                            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-5 mb-8 relative overflow-hidden">
-                                <div className="absolute top-0 left-0 w-full h-1 bg-brand-primary"></div>
-                                <h3 className="text-sm font-bold text-gray-500 mb-4 flex items-center gap-2"><IconRenderer icon={Icons.Calculator} />حاسبة العملات العالمية</h3>
-                                <div className="flex gap-3 mb-4">
-                                    <div className="flex-1"><label className="text-[10px] text-gray-400 mb-1 block">المبلغ</label><input type="number" value={convAmount} onChange={(e) => setConvAmount(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 rounded-lg p-3 font-bold text-lg outline-none border focus:border-brand-primary dark:text-white num-en" /></div>
-                                </div>
-                                <div className="flex items-center gap-2 mb-4">
-                                    <div className="flex-1"><label className="text-[10px] text-gray-400 mb-1 block">من</label><select value={convFrom} onChange={(e) => setConvFrom(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 rounded-lg p-2 text-sm font-bold outline-none dark:text-white"><option value="USD">🇺🇸 USD</option>{Object.keys(GLOBAL_DISPLAY_MAP).map(k => <option key={k} value={k}>{GLOBAL_DISPLAY_MAP[k].flag} {k}</option>)}</select></div>
-                                    <button onClick={() => { const temp = convFrom; setConvFrom(convTo); setConvTo(temp); }} className="mt-4 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center text-gray-500 hover:bg-brand-primary hover:text-white transition"><div className="rotate-90"><IconRenderer icon={Icons.ArrowDownUp} /></div></button>
-                                    <div className="flex-1"><label className="text-[10px] text-gray-400 mb-1 block">إلى</label><select value={convTo} onChange={(e) => setConvTo(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 rounded-lg p-2 text-sm font-bold outline-none dark:text-white"><option value="USD">🇺🇸 USD</option>{Object.keys(GLOBAL_DISPLAY_MAP).map(k => <option key={k} value={k}>{GLOBAL_DISPLAY_MAP[k].flag} {k}</option>)}</select></div>
-                                </div>
-                                <div className="bg-brand-bg dark:bg-gray-900/50 rounded-xl p-3 flex flex-col items-center justify-center border border-dashed border-gray-300 dark:border-gray-600"><span className="text-xs text-gray-400">النتيجة التقديرية</span><div className="text-2xl font-bold text-brand-dark dark:text-brand-primary num-en mt-1">{convResult.toLocaleString('en-US', { maximumFractionDigits: 2 })} <span className="text-xs ml-1 text-gray-500">{convTo}</span></div></div>
-                            </div>
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-bold text-gray-700 dark:text-gray-200">قائمة الأسعار</h3>
-                                <div className="flex bg-gray-200 dark:bg-gray-700 rounded-lg p-0.5">
-                                    <button onClick={() => setBaseCurrency('USD')} className={`px-3 py-1 rounded-md text-xs font-bold transition ${baseCurrency === 'USD' ? 'bg-white dark:bg-gray-600 shadow text-brand-dark dark:text-white' : 'text-gray-500'}`}>USD ($)</button>
-                                    <button onClick={() => setBaseCurrency('EUR')} className={`px-3 py-1 rounded-md text-xs font-bold transition ${baseCurrency === 'EUR' ? 'bg-white dark:bg-gray-600 shadow text-brand-dark dark:text-white' : 'text-gray-500'}`}>EUR (€)</button>
-                                </div>
-                            </div>
-                            {globalLoading && !globalRawData ? <div className="text-center py-10 text-gray-400">جاري جلب الأسعار...</div> : (
-                                <>
-                                    {displayList.map((curr, i) => <RateCard key={i} title={curr.name} buy={curr.buy} sell={curr.sell} icon={curr.flag} code={curr.code} />)}
-                                    <p className="text-center text-xs text-gray-400 mt-4">الأسعار عالمية ويتم تحديثها كل 45 دقيقة.</p>
-                                </>
-                            )}
-                        </div>
+                        {selectedCurrency && <CurrencyDetailModal currency={selectedCurrency} onClose={() => setSelectedCurrency(null)} onMove={handleMoveCard} time={dbLastUpdate} />}
+                        {selectedGoldCard && <GoldDetailModal gold={selectedGoldCard} onClose={() => setSelectedGoldCard(null)} onMove={handleMoveGold} time={dbLastUpdate} />}
                     </div>
                 );
             };
@@ -688,6 +702,12 @@
                 const rawTotal = weight * goldPrice;
                 const feeTotal = weight * fee;
                 const finalTotal = rawTotal + feeTotal;
+                
+                // Get Full Ordered Gold List
+                const sortedGoldData = goldOrder.map(desc => goldData.find(g => g.description === desc)).filter(Boolean);
+                // Fallback if new gold items appear that aren't in order list
+                const unsortedGold = goldData.filter(g => !goldOrder.includes(g.description));
+                const finalDisplayGold = [...sortedGoldData, ...unsortedGold];
 
                 return (
                     <div className="pb-24">
@@ -696,8 +716,21 @@
                             {loading ? <div className="text-center py-10">جاري التحميل...</div> : (
                                 <>
                                     <div className="mb-8 space-y-3">
-                                         {goldData.map((g, i) => (
-                                            <RateCard key={i} title={g.description} buy={g.buy_price} sell={g.sell_price} icon="✨" code={`K${24-i}`} stats={g.stats} />
+                                         {finalDisplayGold.map((g, i) => (
+                                            <RateCard 
+                                                key={i} 
+                                                title={g.description} 
+                                                buy={g.buy_price} 
+                                                sell={g.sell_price} 
+                                                icon="✨" 
+                                                code={`K${24-i}`} 
+                                                stats={g.stats} 
+                                                onClick={() => setSelectedGoldCard(g)}
+                                                draggable={true} 
+                                                onDragStart={() => (dragItem.current = i)} 
+                                                onDragEnter={() => (dragOverItem.current = i)} 
+                                                onDragEnd={handleGoldSort}
+                                            />
                                         ))}
                                     </div>
                                     <div className="bg-white dark:bg-gray-800 rounded-[2rem] shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden relative animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -743,6 +776,67 @@
                                 </>
                             )}
                         </div>
+                        {selectedGoldCard && <GoldDetailModal gold={selectedGoldCard} onClose={() => setSelectedGoldCard(null)} onMove={handleMoveGold} time={dbLastUpdate} />}
+                    </div>
+                );
+            };
+
+            const renderGlobal = () => {
+                let convResult = 0;
+                if (globalRawData) {
+                    const fromRate = convFrom === 'USD' ? 1 : globalRawData[convFrom]?.value || 1;
+                    const toRate = convTo === 'USD' ? 1 : globalRawData[convTo]?.value || 1;
+                    convResult = (convAmount / fromRate) * toRate;
+                }
+                let displayList = [];
+                if (globalRawData) {
+                    let conversionFactor = 1;
+                    if (baseCurrency === 'EUR') {
+                        const eurRate = globalRawData['EUR']?.value;
+                        if (eurRate) conversionFactor = 1 / eurRate;
+                    }
+                    Object.keys(GLOBAL_DISPLAY_MAP).forEach(key => {
+                        if (key === baseCurrency) return;
+                        if (globalRawData[key]) {
+                            const rawRate = globalRawData[key].value;
+                            const baseRate = rawRate * conversionFactor;
+                            const sell = baseRate * (1 + SPREAD_PERCENTAGE);
+                            const buy = baseRate * (1 - SPREAD_PERCENTAGE);
+                            displayList.push({ code: key, buy: buy, sell: sell, ...GLOBAL_DISPLAY_MAP[key] });
+                        }
+                    });
+                }
+                return (
+                    <div className="pb-24">
+                        <Header title="الأسعار العالمية" subtitle="تحويل وحاسبة فورية" time={apiLastUpdate} />
+                        <div className="px-4 pt-12">
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-5 mb-8 relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-full h-1 bg-brand-primary"></div>
+                                <h3 className="text-sm font-bold text-gray-500 mb-4 flex items-center gap-2"><IconRenderer icon={Icons.Calculator} />حاسبة العملات العالمية</h3>
+                                <div className="flex gap-3 mb-4">
+                                    <div className="flex-1"><label className="text-[10px] text-gray-400 mb-1 block">المبلغ</label><input type="number" value={convAmount} onChange={(e) => setConvAmount(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 rounded-lg p-3 font-bold text-lg outline-none border focus:border-brand-primary dark:text-white num-en" /></div>
+                                </div>
+                                <div className="flex items-center gap-2 mb-4">
+                                    <div className="flex-1"><label className="text-[10px] text-gray-400 mb-1 block">من</label><select value={convFrom} onChange={(e) => setConvFrom(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 rounded-lg p-2 text-sm font-bold outline-none dark:text-white"><option value="USD">🇺🇸 USD</option>{Object.keys(GLOBAL_DISPLAY_MAP).map(k => <option key={k} value={k}>{GLOBAL_DISPLAY_MAP[k].flag} {k}</option>)}</select></div>
+                                    <button onClick={() => { const temp = convFrom; setConvFrom(convTo); setConvTo(temp); }} className="mt-4 w-8 h-8 rounded-full bg-gray-100 dark:bg-gray-600 flex items-center justify-center text-gray-500 hover:bg-brand-primary hover:text-white transition"><div className="rotate-90"><IconRenderer icon={Icons.ArrowDownUp} /></div></button>
+                                    <div className="flex-1"><label className="text-[10px] text-gray-400 mb-1 block">إلى</label><select value={convTo} onChange={(e) => setConvTo(e.target.value)} className="w-full bg-gray-50 dark:bg-gray-700 rounded-lg p-2 text-sm font-bold outline-none dark:text-white"><option value="USD">🇺🇸 USD</option>{Object.keys(GLOBAL_DISPLAY_MAP).map(k => <option key={k} value={k}>{GLOBAL_DISPLAY_MAP[k].flag} {k}</option>)}</select></div>
+                                </div>
+                                <div className="bg-brand-bg dark:bg-gray-900/50 rounded-xl p-3 flex flex-col items-center justify-center border border-dashed border-gray-300 dark:border-gray-600"><span className="text-xs text-gray-400">النتيجة التقديرية</span><div className="text-2xl font-bold text-brand-dark dark:text-brand-primary num-en mt-1">{convResult.toLocaleString('en-US', { maximumFractionDigits: 2 })} <span className="text-xs ml-1 text-gray-500">{convTo}</span></div></div>
+                            </div>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-bold text-gray-700 dark:text-gray-200">قائمة الأسعار</h3>
+                                <div className="flex bg-gray-200 dark:bg-gray-700 rounded-lg p-0.5">
+                                    <button onClick={() => setBaseCurrency('USD')} className={`px-3 py-1 rounded-md text-xs font-bold transition ${baseCurrency === 'USD' ? 'bg-white dark:bg-gray-600 shadow text-brand-dark dark:text-white' : 'text-gray-500'}`}>USD ($)</button>
+                                    <button onClick={() => setBaseCurrency('EUR')} className={`px-3 py-1 rounded-md text-xs font-bold transition ${baseCurrency === 'EUR' ? 'bg-white dark:bg-gray-600 shadow text-brand-dark dark:text-white' : 'text-gray-500'}`}>EUR (€)</button>
+                                </div>
+                            </div>
+                            {globalLoading && !globalRawData ? <div className="text-center py-10 text-gray-400">جاري جلب الأسعار...</div> : (
+                                <>
+                                    {displayList.map((curr, i) => <RateCard key={i} title={curr.name} buy={curr.buy} sell={curr.sell} icon={curr.flag} code={curr.code} />)}
+                                    <p className="text-center text-xs text-gray-400 mt-4">الأسعار عالمية ويتم تحديثها كل 45 دقيقة.</p>
+                                </>
+                            )}
+                        </div>
                     </div>
                 );
             };
@@ -759,11 +853,7 @@
                                 <div className="relative mb-6"><input type="number" value={calcAmount} onChange={(e) => setCalcAmount(e.target.value)} className="w-full text-3xl font-bold text-brand-dark dark:text-white bg-transparent border-b-2 border-gray-200 focus:border-brand-primary outline-none py-2 num-en" /></div>
                                 <label className="block text-sm text-gray-500 mb-2 font-semibold">اختر العملة</label>
                                 <div className="grid grid-cols-2 gap-2 mb-4 max-h-40 overflow-y-auto no-scrollbar">
-                                    {currencyData.map((c, i) => {
-                                         const { flag, code } = getFlagAndCode(c.name);
-                                         const isSelected = calcSource?.name === c.name;
-                                         return <button key={i} onClick={() => setCalcSource(c)} className={`flex items-center gap-2 p-2 rounded-lg border transition ${isSelected ? 'border-brand-primary bg-brand-primary/10' : 'border-gray-200 dark:border-gray-700'}`}><span>{flag}</span><span className="text-sm font-bold dark:text-gray-200">{code}</span></button>;
-                                    })}
+                                    {currencyData.map((c, i) => { const { flag, code } = getFlagAndCode(c.name); const isSelected = calcSource?.name === c.name; return <button key={i} onClick={() => setCalcSource(c)} className={`flex items-center gap-2 p-2 rounded-lg border transition ${isSelected ? 'border-brand-primary bg-brand-primary/10' : 'border-gray-200 dark:border-gray-700'}`}><span>{flag}</span><span className="text-sm font-bold dark:text-gray-200">{code}</span></button>; })}
                                 </div>
                                 {calcSource && <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4 text-center"><p className="text-gray-500 text-sm mb-1">القيمة بالليرة السورية</p><div className="text-3xl font-bold text-brand-primary num-en">{Math.floor(calcAmount * calcSource.sell_price).toLocaleString('en-US')} <span className="text-sm mr-1 text-gray-400">ل.س</span></div></div>}
                             </div>
@@ -799,8 +889,8 @@
                                 <div className="flex items-center gap-3"><span className="text-xl">🏆</span><span className="dark:text-gray-200">أسعار الذهب</span></div>
                                 <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${showGold ? 'bg-brand-primary border-brand-primary text-white' : 'border-gray-300'}`}>{showGold && <IconRenderer icon={Icons.Check} />}</div>
                             </div>
-                             <h4 className="font-bold text-sm text-gray-500 mt-4 mb-2">العملات المثبتة</h4>
-                            <div className="space-y-3">{currencyData.map((c, i) => { const { flag } = getFlagAndCode(c.name); const code = c.code; const isPinned = pinned.includes(code); return <div key={i} onClick={() => togglePin(code)} className="flex justify-between items-center cursor-pointer p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg"><div className="flex items-center gap-3"><span className="text-xl">{flag}</span><span className="dark:text-gray-200">{c.name}</span></div><div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${isPinned ? 'bg-brand-primary border-brand-primary text-white' : 'border-gray-300'}`}>{isPinned && <IconRenderer icon={Icons.Check} />}</div></div>; })}</div>
+                            <h4 className="font-bold text-sm text-gray-500 mt-4 mb-2">العملات المثبتة</h4>
+                            <div className="space-y-3">{currencyData.map((c, i) => { const { flag, code } = getFlagAndCode(c.name); const isPinned = pinned.includes(code); return <div key={i} onClick={() => { if(isPinned) setPinned(pinned.filter(p=>p!==code)); else setPinned([...pinned,code]); }} className="flex justify-between items-center cursor-pointer p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg"><div className="flex items-center gap-3"><span className="text-xl">{flag}</span><span className="dark:text-gray-200">{c.name}</span></div><div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${isPinned ? 'bg-brand-primary border-brand-primary text-white' : 'border-gray-300'}`}>{isPinned && <IconRenderer icon={Icons.Check} />}</div></div>; })}</div>
                         </div>
                     </div>
                 </div>
@@ -837,7 +927,7 @@
 
             return (
                 <div className="min-h-screen bg-gray-100 dark:bg-gray-900 max-w-md mx-auto relative shadow-2xl overflow-hidden">
-                    <InstallPrompt /> {/* Install Banner Component */}
+                    <InstallPrompt />
                     {showSplash && <SplashScreen />}
                     
                     {activeTab === 'home' && renderHome()}
