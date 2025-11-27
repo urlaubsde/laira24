@@ -176,7 +176,7 @@
             Info: () => <i data-lucide="info" className="w-4 h-4"></i>,
             Gem: () => <i data-lucide="gem" className="w-4 h-4"></i>,
             Camera: () => <i data-lucide="camera" className="w-4 h-4"></i>,
-            Facebook: () => <i data-lucide="facebook" className="w-6 h-6"></i> // Added Facebook Icon
+            Facebook: () => <i data-lucide="facebook" className="w-6 h-6"></i>
         };
 
         const IconRenderer = ({ icon }) => {
@@ -188,21 +188,77 @@
             </span>;
         };
 
-        // --- Screenshot Logic ---
+        // --- Screenshot Logic (Final Fix V3 - Max Force Spacing) ---
         const handleScreenshot = async (elementId, title) => {
             const element = document.getElementById(elementId);
             if (!element) return;
             
             try {
-                // Add a small delay to ensure rendering is complete
                 await new Promise(resolve => setTimeout(resolve, 100));
                 
                 const canvas = await html2canvas(element, {
-                    scale: 3, // High resolution
+                    scale: 3, 
                     useCORS: true,
-                    backgroundColor: null, // Transparent bg so it takes the element's bg
+                    backgroundColor: null,
+                    // زيادة العرض بشكل أكبر لفك أي ضغط إجباري
+                    windowWidth: 700, 
+                    onclone: (clonedDoc) => {
+                        const clonedElement = clonedDoc.getElementById(elementId);
+                        if (clonedElement) {
+                            // 1. تثبيت أبعاد البطاقة وحجم الخط
+                            clonedElement.style.width = '480px';
+                            clonedElement.style.minWidth = '480px';
+                            clonedElement.style.maxWidth = '480px';
+                            clonedElement.style.padding = '30px'; 
+                            
+                            // 2. استهداف حاوية الهيدر الرئيسية (العنوان والأيقونة)
+                            // .flex.justify-between.items-start
+                            const headerContainer = clonedElement.querySelector('.flex.justify-between.items-start');
+                            if (headerContainer) {
+                                headerContainer.style.display = 'flex';
+                                headerContainer.style.alignItems = 'flex-start'; // تثبيت المحاذاة للأعلى
+                                headerContainer.style.gap = '20px'; 
+                            }
+
+                            // 3. استهداف حاوية الأيقونة (الكأس)
+                            // .w-16.h-16.rounded-full
+                            const iconContainer = headerContainer?.querySelector('.w-16.h-16.rounded-full');
+                            if (iconContainer) {
+                                iconContainer.style.minWidth = '64px'; // تثبيت الحجم لمنع انكماش Flex
+                                iconContainer.style.minHeight = '64px';
+                                iconContainer.style.marginLeft = '10px'; // دفع الأيقونة بعيداً عن النص (RTL)
+                            }
+
+                            // 4. استهداف حاوية النص (Title + Badge)
+                            // الحاوية التي تحتوي على العنوان وشارة GOLD
+                            const textContainer = headerContainer?.querySelector('div:nth-child(2)'); // يجب أن تكون ثاني عنصر
+                            if (textContainer) {
+                                textContainer.style.flexGrow = '1'; // إعطاؤها أكبر قدر من المساحة
+                                textContainer.style.minWidth = '0'; 
+                            }
+
+                            // 5. تثبيت العنوان ومنع التفاف النصوص
+                            const titleElement = clonedElement.querySelector('h2');
+                            if (titleElement) {
+                                titleElement.style.whiteSpace = 'nowrap'; 
+                                titleElement.style.fontSize = '26px'; // زيادة حجم الخط قليلاً ليصبح أكثر وضوحاً
+                                titleElement.style.marginBottom = '5px';
+                            }
+
+                            // 6. تثبيت شارة GOLD
+                            const badgeContainer = titleElement?.nextElementSibling;
+                            if (badgeContainer) {
+                                badgeContainer.style.marginTop = '8px';
+                                badgeContainer.style.marginBottom = '10px';
+                            }
+
+                            // 7. الخلفية (لضمان الوضوح)
+                            const isDark = document.documentElement.classList.contains('dark');
+                            clonedElement.style.backgroundColor = isDark ? '#1f2937' : '#ffffff';
+                            clonedElement.style.borderRadius = '30px';
+                        }
+                    },
                     ignoreElements: (node) => {
-                        // This effectively hides the "X" and "Reorder" buttons
                         return node.classList.contains('screenshot-exclude');
                     }
                 });
