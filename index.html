@@ -13,6 +13,8 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -93,7 +95,6 @@
     <div id="root"></div>
 
     <script>
-        // تسجيل Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
@@ -173,7 +174,8 @@
             ArrowUp: () => <i data-lucide="arrow-up" className="w-5 h-5"></i>,
             ArrowDown: () => <i data-lucide="arrow-down" className="w-5 h-5"></i>,
             Info: () => <i data-lucide="info" className="w-4 h-4"></i>,
-            Gem: () => <i data-lucide="gem" className="w-4 h-4"></i>
+            Gem: () => <i data-lucide="gem" className="w-4 h-4"></i>,
+            Camera: () => <i data-lucide="camera" className="w-4 h-4"></i>
         };
 
         const IconRenderer = ({ icon }) => {
@@ -183,6 +185,34 @@
             return <span className="inline-flex items-center justify-center icon-wrapper">
                 {icon()}
             </span>;
+        };
+
+        // --- Screenshot Logic ---
+        const handleScreenshot = async (elementId, title) => {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            
+            try {
+                // Add a small delay to ensure rendering is complete
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                const canvas = await html2canvas(element, {
+                    scale: 3, // High resolution
+                    useCORS: true,
+                    backgroundColor: null, // Transparent bg so it takes the element's bg
+                    ignoreElements: (node) => {
+                        // This effectively hides the "X" and "Reorder" buttons
+                        return node.classList.contains('screenshot-exclude');
+                    }
+                });
+
+                const link = document.createElement('a');
+                link.download = `Lira24-${title}-${new Date().getTime()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            } catch (error) {
+                console.error("Screenshot failed:", error);
+            }
         };
 
         // --- Components ---
@@ -264,11 +294,11 @@
             return { flag: "🌍", code: "GBL" };
         };
 
-        // --- Custom Elegant Close Button ---
+        // --- Elegant Close Button (Marked to be excluded from screenshot) ---
         const ElegantCloseButton = ({ onClick }) => (
             <button 
                 onClick={onClick} 
-                className="group relative flex items-center justify-center w-10 h-10 rounded-full bg-white/60 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-600/50 shadow-sm transition-all duration-300 hover:bg-red-50 hover:border-red-200 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:border-red-900/30 dark:hover:text-red-400 hover:scale-110 active:scale-95 z-50"
+                className="screenshot-exclude group relative flex items-center justify-center w-10 h-10 rounded-full bg-white/60 dark:bg-gray-800/60 backdrop-blur-md border border-gray-200/50 dark:border-gray-600/50 shadow-sm transition-all duration-300 hover:bg-red-50 hover:border-red-200 hover:text-red-500 dark:hover:bg-red-900/20 dark:hover:border-red-900/30 dark:hover:text-red-400 hover:scale-110 active:scale-95 z-50"
             >
                 <div className="transition-transform duration-300 group-hover:rotate-90">
                     <IconRenderer icon={Icons.X} />
@@ -289,7 +319,7 @@
 
             return (
                 <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
-                    <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-gray-100 dark:border-gray-700 relative overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-10 duration-300" onClick={e => e.stopPropagation()}>
+                    <div id="currency-modal-card" className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-gray-100 dark:border-gray-700 relative overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-10 duration-300" onClick={e => e.stopPropagation()}>
                         
                         <div className="flex justify-between items-start mb-6 relative z-10">
                             <div className="flex items-center gap-4">
@@ -338,11 +368,20 @@
                             </div>
                         </div>
 
-                        <div className="bg-gray-100 dark:bg-gray-900 rounded-xl p-3 flex justify-between items-center">
-                            <span className="text-xs font-bold text-gray-500">ترتيب العرض:</span>
-                            <div className="flex gap-2">
-                                <button onClick={() => onMove(code, -1)} className="flex items-center gap-1 bg-white dark:bg-gray-700 px-3 py-2 rounded-lg shadow-sm text-xs font-bold hover:bg-gray-50 dark:text-white transition active:scale-95"><IconRenderer icon={Icons.ArrowUp} /> للأعلى</button>
-                                <button onClick={() => onMove(code, 1)} className="flex items-center gap-1 bg-white dark:bg-gray-700 px-3 py-2 rounded-lg shadow-sm text-xs font-bold hover:bg-gray-50 dark:text-white transition active:scale-95"><IconRenderer icon={Icons.ArrowDown} /> للأسفل</button>
+                        {/* Controls (Excluded from screenshot) */}
+                        <div className="flex gap-2 screenshot-exclude">
+                            <button 
+                                onClick={() => handleScreenshot('currency-modal-card', code)}
+                                className="flex-1 bg-brand-primary hover:bg-brand-light text-brand-dark rounded-xl p-3 flex items-center justify-center gap-2 font-bold text-xs transition"
+                            >
+                                <IconRenderer icon={Icons.Camera} /> حفظ البطاقة
+                            </button>
+                            <div className="flex-1 bg-gray-100 dark:bg-gray-900 rounded-xl p-3 flex justify-between items-center">
+                                <span className="text-[10px] font-bold text-gray-500">ترتيب:</span>
+                                <div className="flex gap-2">
+                                    <button onClick={() => onMove(code, -1)} className="p-1 rounded bg-white dark:bg-gray-700 shadow-sm"><IconRenderer icon={Icons.ArrowUp} /></button>
+                                    <button onClick={() => onMove(code, 1)} className="p-1 rounded bg-white dark:bg-gray-700 shadow-sm"><IconRenderer icon={Icons.ArrowDown} /></button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -350,21 +389,19 @@
             );
         };
 
-        // --- NEW: Gold Detail Modal (Feature Request) ---
+        // --- Gold Modal ---
         const GoldDetailModal = ({ gold, onClose, onMove, time }) => {
             if (!gold) return null;
-            const isUp = gold.stats?.direction === 'up';
             const sell = parseFloat(gold.sell_price);
             const buy = parseFloat(gold.buy_price);
             const spread = sell - buy;
             const chartData = useMemo(() => generateChartData(sell, 15, 0.015), [sell]);
-            const goldKey = gold.description; // Identifier for sorting
+            const goldKey = gold.description;
 
             return (
                 <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
-                    <div className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-brand-primary/20 dark:border-brand-primary/10 relative overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-10 duration-300" onClick={e => e.stopPropagation()}>
+                    <div id="gold-modal-card" className="bg-white dark:bg-gray-800 w-full max-w-sm rounded-3xl p-6 shadow-2xl border border-brand-primary/20 dark:border-brand-primary/10 relative overflow-hidden animate-in zoom-in-95 slide-in-from-bottom-10 duration-300" onClick={e => e.stopPropagation()}>
                         
-                        {/* Header */}
                         <div className="flex justify-between items-start mb-6 relative z-10">
                             <div className="flex items-center gap-4">
                                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 flex items-center justify-center text-4xl shadow-inner border border-yellow-200 dark:border-yellow-700">🏆</div>
@@ -379,12 +416,10 @@
                             <ElegantCloseButton onClick={onClose} />
                         </div>
 
-                        {/* Chart BG */}
                         <div className="absolute top-20 left-0 right-0 opacity-10 pointer-events-none">
                             <LineChart data={chartData} color="#eab308" height={100} showAxis={false} />
                         </div>
 
-                        {/* Stats */}
                         <div className="grid grid-cols-2 gap-4 mb-6 relative z-10">
                             <div className="bg-yellow-50/50 dark:bg-gray-700/50 p-4 rounded-2xl border border-yellow-100 dark:border-gray-600">
                                 <span className="text-xs text-gray-400 block mb-1">سعر المبيع</span>
@@ -396,7 +431,6 @@
                             </div>
                         </div>
 
-                        {/* Info List */}
                         <div className="space-y-3 mb-6 relative z-10">
                             <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-200 dark:border-gray-700">
                                 <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2"><IconRenderer icon={Icons.Clock} />آخر تحديث</span>
@@ -412,12 +446,20 @@
                             </div>
                         </div>
 
-                        {/* Reorder Controls */}
-                        <div className="bg-gray-100 dark:bg-gray-900 rounded-xl p-3 flex justify-between items-center">
-                            <span className="text-xs font-bold text-gray-500">ترتيب العرض:</span>
-                            <div className="flex gap-2">
-                                <button onClick={() => onMove(goldKey, -1)} className="flex items-center gap-1 bg-white dark:bg-gray-700 px-3 py-2 rounded-lg shadow-sm text-xs font-bold hover:bg-gray-50 dark:text-white transition active:scale-95"><IconRenderer icon={Icons.ArrowUp} /> للأعلى</button>
-                                <button onClick={() => onMove(goldKey, 1)} className="flex items-center gap-1 bg-white dark:bg-gray-700 px-3 py-2 rounded-lg shadow-sm text-xs font-bold hover:bg-gray-50 dark:text-white transition active:scale-95"><IconRenderer icon={Icons.ArrowDown} /> للأسفل</button>
+                         {/* Controls (Excluded from screenshot) */}
+                         <div className="flex gap-2 screenshot-exclude">
+                            <button 
+                                onClick={() => handleScreenshot('gold-modal-card', gold.description)}
+                                className="flex-1 bg-brand-primary hover:bg-brand-light text-brand-dark rounded-xl p-3 flex items-center justify-center gap-2 font-bold text-xs transition"
+                            >
+                                <IconRenderer icon={Icons.Camera} /> حفظ البطاقة
+                            </button>
+                            <div className="flex-1 bg-gray-100 dark:bg-gray-900 rounded-xl p-3 flex justify-between items-center">
+                                <span className="text-[10px] font-bold text-gray-500">ترتيب:</span>
+                                <div className="flex gap-2">
+                                    <button onClick={() => onMove(goldKey, -1)} className="p-1 rounded bg-white dark:bg-gray-700 shadow-sm"><IconRenderer icon={Icons.ArrowUp} /></button>
+                                    <button onClick={() => onMove(goldKey, 1)} className="p-1 rounded bg-white dark:bg-gray-700 shadow-sm"><IconRenderer icon={Icons.ArrowDown} /></button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -569,12 +611,9 @@
                 setDbLastUpdate(new Date());
                 setCurrencyData(enrichedCurrencies);
                 setGoldData(enrichedGold);
-                
-                // Initialize Gold Order if empty
                 if (goldOrder.length === 0 && enrichedGold.length > 0) {
                     setGoldOrder(enrichedGold.map(g => g.description));
                 }
-
                 const usd = enrichedCurrencies.find(c => c.name.includes("دولار"));
                 if (usd) setCalcSource(usd);
                 setLoading(false);
@@ -603,7 +642,6 @@
                 setGlobalLoading(false);
             };
 
-            // Currency Sort Handlers
             const handleSort = () => {
                 let _pinned = [...pinned];
                 const draggedItemContent = _pinned.splice(dragItem.current, 1)[0];
@@ -622,7 +660,6 @@
                 setPinned(newPinned);
             };
 
-            // Gold Sort Handlers (New)
             const handleGoldSort = () => {
                 let _order = [...goldOrder];
                 const draggedItemContent = _order.splice(dragItem.current, 1)[0];
@@ -662,7 +699,6 @@
 
             const renderHome = () => {
                 const visibleCurrencies = pinned.map(code => currencyData.find(c => c.code === code)).filter(Boolean);
-                // Get ordered gold data (Top 2)
                 const visibleGold = goldOrder.map(desc => goldData.find(g => g.description === desc)).filter(Boolean).slice(0, 2);
                 
                 return (
@@ -703,9 +739,7 @@
                 const feeTotal = weight * fee;
                 const finalTotal = rawTotal + feeTotal;
                 
-                // Get Full Ordered Gold List
                 const sortedGoldData = goldOrder.map(desc => goldData.find(g => g.description === desc)).filter(Boolean);
-                // Fallback if new gold items appear that aren't in order list
                 const unsortedGold = goldData.filter(g => !goldOrder.includes(g.description));
                 const finalDisplayGold = [...sortedGoldData, ...unsortedGold];
 
