@@ -17,7 +17,7 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
     
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -739,24 +739,63 @@
                 setGoldOrder(newOrder);
             };
 
+            // *** REDESIGNED HEADER START ***
             const Header = ({ title, subtitle, time }) => (
-                <div className="bg-brand-dark text-white p-6 pb-12 rounded-b-[2.5rem] shadow-lg relative z-10 mb-[-2rem]">
-                    <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-brand-primary rounded-full flex items-center justify-center text-brand-dark font-bold text-xs">24</div>
-                            <h1 className="text-xl font-bold">الليرة 24</h1>
+                <div className="relative z-10 mb-[-2rem] overflow-hidden rounded-b-[3rem] bg-[#163300] shadow-2xl">
+                    {/* Background Effects */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#1a3c00] via-[#112700] to-[#0a1a00]"></div>
+                    <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#2ed06e] opacity-10 rounded-full blur-3xl"></div>
+                    <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-[#9fe870] opacity-10 rounded-full blur-3xl"></div>
+
+                    <div className="relative p-6 pb-12 pt-8">
+                        {/* Top Bar */}
+                        <div className="flex justify-between items-center mb-8">
+                            {/* Brand */}
+                            <div className="flex items-center gap-3">
+                                <div className="relative w-10 h-10 flex items-center justify-center">
+                                    <div className="absolute inset-0 bg-gradient-to-tr from-[#2ed06e] to-[#9fe870] rounded-xl rotate-6 opacity-80"></div>
+                                    <div className="absolute inset-0 bg-[#163300] rounded-xl border border-[#2ed06e]/30 flex items-center justify-center text-[#2ed06e] font-black text-sm z-10 shadow-lg">24</div>
+                                </div>
+                                <div className="flex flex-col">
+                                    <h1 className="text-lg font-bold text-white leading-none tracking-wide">الليرة 24</h1>
+                                    <span className="text-[10px] text-[#9fe870] font-light tracking-widest opacity-80">SYRIAN POUND</span>
+                                </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setActiveTab('settings')}
+                                    className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/70 hover:bg-white/10 hover:text-white hover:border-white/20 transition-all active:scale-95"
+                                >
+                                    <IconRenderer icon={Icons.Settings} />
+                                </button>
+                                <button
+                                    onClick={loadData}
+                                    className="group w-10 h-10 rounded-full bg-gradient-to-br from-[#2ed06e] to-[#25a556] shadow-lg shadow-[#2ed06e]/20 flex items-center justify-center text-[#0f2400] transition-all active:scale-95 hover:shadow-[#2ed06e]/40"
+                                >
+                                    <div className="group-active:rotate-180 transition-transform duration-500">
+                                        <IconRenderer icon={Icons.Refresh} />
+                                    </div>
+                                </button>
+                            </div>
                         </div>
-                        <div className="flex gap-2">
-                            <button onClick={() => setActiveTab('settings')} className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition"><IconRenderer icon={Icons.Settings} /></button>
-                            <button onClick={loadData} className="p-2 bg-white/10 rounded-full hover:bg-white/20 transition group"><div className="group-active:rotate-180 transition-transform duration-500"><IconRenderer icon={Icons.Refresh} /></div></button>
+
+                        {/* Main Content */}
+                        <div>
+                            <h2 className="text-3xl font-black text-white mb-2 leading-tight tracking-tight">{title}</h2>
+                            <div className="flex flex-wrap items-center gap-3">
+                                <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1 rounded-full backdrop-blur-sm">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#2ed06e] animate-pulse"></span>
+                                    <span className="text-xs text-[#9fe870] font-mono num-en">{formatLastUpdate(time)}</span>
+                                </div>
+                                <span className="text-sm text-gray-400 font-light border-l border-white/10 pl-3">{subtitle}</span>
+                            </div>
                         </div>
-                    </div>
-                    <h2 className="text-2xl font-bold mb-1">{title}</h2>
-                    <div className="flex items-center gap-2 text-brand-light text-sm opacity-90">
-                        <span>{subtitle}</span><span className="w-1 h-1 rounded-full bg-brand-light"></span><span className="num-en font-mono text-xs opacity-80">تحديث: {formatLastUpdate(time)}</span>
                     </div>
                 </div>
             );
+            // *** REDESIGNED HEADER END ***
 
             const renderHome = () => {
                 const visibleCurrencies = pinned.map(code => currencyData.find(c => c.code === code)).filter(Boolean);
@@ -765,7 +804,7 @@
                 
                 return (
                     <div className="pb-24">
-                        <Header title="أسعار الصرف الحالية" subtitle="مقابل الليرة السورية" time={dbLastUpdate} />
+                        <Header title="أسعار الصرف" subtitle="مباشر مقابل الليرة السورية" time={dbLastUpdate} />
                         <div className="px-4 pt-12">
                             {loading ? <div className="text-center py-10 text-gray-400">جاري التحميل...</div> : (
                                 <>
@@ -807,7 +846,7 @@
 
                 return (
                     <div className="pb-24">
-                        <Header title="أسعار الذهب والمجوهرات" subtitle="تحديث لحظي من الصاغة" time={dbLastUpdate} />
+                        <Header title="أسعار الذهب" subtitle="تحديث لحظي من الصاغة" time={dbLastUpdate} />
                         <div className="px-4 pt-12">
                             {loading ? <div className="text-center py-10">جاري التحميل...</div> : (
                                 <>
@@ -942,7 +981,7 @@
                 const chartColor = isTrendUp ? "#2ed06e" : "#ef4444";
                 return (
                     <div className="pb-24">
-                        <Header title="الحاسبة والتحليلات" subtitle="حساب دقيق لجميع العملات" time={dbLastUpdate} />
+                        <Header title="الحاسبة والتحليل" subtitle="حساب دقيق لكافة العملات" time={dbLastUpdate} />
                         <div className="px-4 pt-12">
                             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 border border-gray-100 dark:border-gray-700 mb-4">
                                 <label className="block text-sm text-gray-500 mb-2 font-semibold">المبلغ المراد تحويله</label>
