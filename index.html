@@ -188,7 +188,7 @@
             </span>;
         };
 
-        // --- Screenshot Logic (Final Fix V3 - Max Force Spacing) ---
+        // --- Screenshot Logic ---
         const handleScreenshot = async (elementId, title) => {
             const element = document.getElementById(elementId);
             if (!element) return;
@@ -200,59 +200,48 @@
                     scale: 3, 
                     useCORS: true,
                     backgroundColor: null,
-                    // زيادة العرض بشكل أكبر لفك أي ضغط إجباري
                     windowWidth: 700, 
                     onclone: (clonedDoc) => {
                         const clonedElement = clonedDoc.getElementById(elementId);
                         if (clonedElement) {
-                            // 1. تثبيت أبعاد البطاقة وحجم الخط
                             clonedElement.style.width = '480px';
                             clonedElement.style.minWidth = '480px';
                             clonedElement.style.maxWidth = '480px';
                             clonedElement.style.padding = '30px'; 
                             
-                            // 2. استهداف حاوية الهيدر الرئيسية (العنوان والأيقونة)
-                            // .flex.justify-between.items-start
                             const headerContainer = clonedElement.querySelector('.flex.justify-between.items-start');
                             if (headerContainer) {
                                 headerContainer.style.display = 'flex';
-                                headerContainer.style.alignItems = 'flex-start'; // تثبيت المحاذاة للأعلى
+                                headerContainer.style.alignItems = 'flex-start';
                                 headerContainer.style.gap = '20px'; 
                             }
 
-                            // 3. استهداف حاوية الأيقونة (الكأس)
-                            // .w-16.h-16.rounded-full
                             const iconContainer = headerContainer?.querySelector('.w-16.h-16.rounded-full');
                             if (iconContainer) {
-                                iconContainer.style.minWidth = '64px'; // تثبيت الحجم لمنع انكماش Flex
+                                iconContainer.style.minWidth = '64px';
                                 iconContainer.style.minHeight = '64px';
-                                iconContainer.style.marginLeft = '10px'; // دفع الأيقونة بعيداً عن النص (RTL)
+                                iconContainer.style.marginLeft = '10px';
                             }
 
-                            // 4. استهداف حاوية النص (Title + Badge)
-                            // الحاوية التي تحتوي على العنوان وشارة GOLD
-                            const textContainer = headerContainer?.querySelector('div:nth-child(2)'); // يجب أن تكون ثاني عنصر
+                            const textContainer = headerContainer?.querySelector('div:nth-child(2)');
                             if (textContainer) {
-                                textContainer.style.flexGrow = '1'; // إعطاؤها أكبر قدر من المساحة
+                                textContainer.style.flexGrow = '1';
                                 textContainer.style.minWidth = '0'; 
                             }
 
-                            // 5. تثبيت العنوان ومنع التفاف النصوص
                             const titleElement = clonedElement.querySelector('h2');
                             if (titleElement) {
                                 titleElement.style.whiteSpace = 'nowrap'; 
-                                titleElement.style.fontSize = '26px'; // زيادة حجم الخط قليلاً ليصبح أكثر وضوحاً
+                                titleElement.style.fontSize = '26px';
                                 titleElement.style.marginBottom = '5px';
                             }
 
-                            // 6. تثبيت شارة GOLD
                             const badgeContainer = titleElement?.nextElementSibling;
                             if (badgeContainer) {
                                 badgeContainer.style.marginTop = '8px';
                                 badgeContainer.style.marginBottom = '10px';
                             }
 
-                            // 7. الخلفية (لضمان الوضوح)
                             const isDark = document.documentElement.classList.contains('dark');
                             clonedElement.style.backgroundColor = isDark ? '#1f2937' : '#ffffff';
                             clonedElement.style.borderRadius = '30px';
@@ -351,7 +340,7 @@
             return { flag: "🌍", code: "GBL" };
         };
 
-        // --- Elegant Close Button (Marked to be excluded from screenshot) ---
+        // --- Elegant Close Button ---
         const ElegantCloseButton = ({ onClick }) => (
             <button 
                 onClick={onClick} 
@@ -425,7 +414,6 @@
                             </div>
                         </div>
 
-                        {/* Controls (Excluded from screenshot) */}
                         <div className="flex gap-2 screenshot-exclude">
                             <button 
                                 onClick={() => handleScreenshot('currency-modal-card', code)}
@@ -503,7 +491,6 @@
                             </div>
                         </div>
 
-                         {/* Controls (Excluded from screenshot) */}
                          <div className="flex gap-2 screenshot-exclude">
                             <button 
                                 onClick={() => handleScreenshot('gold-modal-card', gold.description)}
@@ -625,12 +612,19 @@
             const [chartTimeframe, setChartTimeframe] = useState('1D');
             const [chartData, setChartData] = useState([]);
 
+            // State for Settings accordion
+            const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+
             // Sort & Drag State - Currency
             const [pinned, setPinned] = useState(() => { try { return JSON.parse(localStorage.getItem('pinnedCurrencies')) || ['USD', 'EUR', 'TRY', 'SAR']; } catch { return ['USD', 'EUR', 'TRY', 'SAR']; } });
             const [selectedCurrency, setSelectedCurrency] = useState(null);
             
             // Sort & Drag State - Gold
             const [goldOrder, setGoldOrder] = useState(() => { try { return JSON.parse(localStorage.getItem('goldOrder')) || []; } catch { return []; } });
+            
+            // ** NEW: Pinned Gold State **
+            const [pinnedGold, setPinnedGold] = useState(() => { try { return JSON.parse(localStorage.getItem('pinnedGold')) || []; } catch { return []; } });
+
             const [selectedGoldCard, setSelectedGoldCard] = useState(null);
 
             const dragItem = useRef();
@@ -640,8 +634,18 @@
             useEffect(() => { localStorage.setItem('pinnedCurrencies', JSON.stringify(pinned)); }, [pinned]);
             useEffect(() => { localStorage.setItem('goldOrder', JSON.stringify(goldOrder)); }, [goldOrder]);
             useEffect(() => { localStorage.setItem('showGoldOnHome', showGold); }, [showGold]);
+            useEffect(() => { localStorage.setItem('pinnedGold', JSON.stringify(pinnedGold)); }, [pinnedGold]);
+
             useEffect(() => { loadData(); }, []);
             useEffect(() => { if (goldData.length > 0 && !selectedGoldId) setSelectedGoldId(goldData[0].id || goldData[0].description); }, [goldData]);
+            
+            // Auto-init Pinned Gold
+            useEffect(() => {
+                if (goldData.length > 0 && pinnedGold.length === 0) {
+                     setPinnedGold(goldData.slice(0, 2).map(g => g.description));
+                }
+            }, [goldData]);
+
             useEffect(() => {
                 if (calcSource) {
                     const base = parseFloat(calcSource.sell_price);
@@ -756,7 +760,8 @@
 
             const renderHome = () => {
                 const visibleCurrencies = pinned.map(code => currencyData.find(c => c.code === code)).filter(Boolean);
-                const visibleGold = goldOrder.map(desc => goldData.find(g => g.description === desc)).filter(Boolean).slice(0, 2);
+                // ** UPDATED: Use pinnedGold state instead of just slicing the top 2 **
+                const visibleGold = pinnedGold.map(desc => goldData.find(g => g.description === desc)).filter(Boolean);
                 
                 return (
                     <div className="pb-24">
@@ -773,9 +778,9 @@
                                     {showGold && (
                                         <>
                                             <div className="flex justify-between items-center mb-2 px-1 mt-6"><span className="font-bold text-gray-700 dark:text-gray-200">أسعار الذهب (مختصر)</span></div>
-                                            {visibleGold.map((g, i) => (
+                                            {visibleGold.length > 0 ? visibleGold.map((g, i) => (
                                                 <RateCard key={`g-${i}`} title={g.description} buy={g.buy_price} sell={g.sell_price} icon="🏆" code="GOLD" stats={g.stats} onClick={() => setSelectedGoldCard(g)} />
-                                            ))}
+                                            )) : <div className="text-center py-4 text-xs text-gray-400">لم يتم تثبيت أي عيارات ذهب للعرض.</div>}
                                         </>
                                     )}
                                 </>
@@ -966,43 +971,154 @@
                 );
             };
 
+            // --- Updated Settings Renderer ---
             const renderSettings = () => (
                 <div className="pb-24">
                     <Header title="الإعدادات" subtitle="تخصيص التطبيق" time={dbLastUpdate} />
                     <div className="px-4 pt-12 space-y-4">
-                        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 flex justify-between items-center shadow-sm">
-                            <div className="flex items-center gap-3"><div className={`p-2 rounded-full ${darkMode ? 'bg-indigo-100 text-indigo-600' : 'bg-yellow-100 text-yellow-600'}`}><IconRenderer icon={darkMode ? Icons.Moon : Icons.Sun} /></div><span className="font-bold dark:text-white">الوضع الليلي</span></div>
-                            <button onClick={() => setDarkMode(!darkMode)} className={`w-12 h-6 rounded-full transition-colors flex items-center px-1 ${darkMode ? 'bg-brand-primary justify-end' : 'bg-gray-300 justify-start'}`}><div className="w-4 h-4 bg-white rounded-full shadow-md"></div></button>
-                        </div>
-                        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
-                            <h3 className="font-bold mb-4 border-b pb-2 dark:border-gray-700 dark:text-white">تخصيص المحتوى</h3>
-                            <div onClick={() => setShowGold(!showGold)} className="flex justify-between items-center cursor-pointer p-2 mb-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg">
-                                <div className="flex items-center gap-3"><span className="text-xl">🏆</span><span className="dark:text-gray-200">أسعار الذهب</span></div>
-                                <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${showGold ? 'bg-brand-primary border-brand-primary text-white' : 'border-gray-300'}`}>{showGold && <IconRenderer icon={Icons.Check} />}</div>
+                        
+                        {/* Dark Mode Card */}
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 flex justify-between items-center shadow-sm border border-gray-100 dark:border-gray-700">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${darkMode ? 'bg-indigo-100 text-indigo-600' : 'bg-orange-100 text-orange-600'}`}>
+                                    <IconRenderer icon={darkMode ? Icons.Moon : Icons.Sun} />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-800 dark:text-white text-sm">المظهر</h3>
+                                    <p className="text-[10px] text-gray-400">التبديل بين الليلي والنهاري</p>
+                                </div>
                             </div>
-                            <h4 className="font-bold text-sm text-gray-500 mt-4 mb-2">العملات المثبتة</h4>
-                            <div className="space-y-3">{currencyData.map((c, i) => { const { flag, code } = getFlagAndCode(c.name); const isPinned = pinned.includes(code); return <div key={i} onClick={() => { if(isPinned) setPinned(pinned.filter(p=>p!==code)); else setPinned([...pinned,code]); }} className="flex justify-between items-center cursor-pointer p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg"><div className="flex items-center gap-3"><span className="text-xl">{flag}</span><span className="dark:text-gray-200">{c.name}</span></div><div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${isPinned ? 'bg-brand-primary border-brand-primary text-white' : 'border-gray-300'}`}>{isPinned && <IconRenderer icon={Icons.Check} />}</div></div>; })}</div>
+                            <button 
+                                onClick={() => setDarkMode(!darkMode)} 
+                                className={`w-12 h-7 rounded-full transition-all duration-300 flex items-center px-1 ${darkMode ? 'bg-brand-primary justify-end' : 'bg-gray-200 justify-start'}`}
+                            >
+                                <div className="w-5 h-5 bg-white rounded-full shadow-md transform transition-transform"></div>
+                            </button>
                         </div>
 
-                        {/* --- Contact Card --- */}
-                        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-500">
-                            <h3 className="font-bold mb-4 border-b pb-2 dark:border-gray-700 dark:text-white flex items-center gap-2">
-                                <span className="text-brand-primary"><IconRenderer icon={Icons.Send} /></span> تواصل معنا
+                        {/* Redesigned Content Customization (Accordion) */}
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-all duration-300">
+                            <button 
+                                onClick={() => setIsCustomizeOpen(!isCustomizeOpen)}
+                                className="w-full p-4 flex items-center justify-between bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-brand-primary/10 flex items-center justify-center text-brand-primary">
+                                        <IconRenderer icon={Icons.Settings} />
+                                    </div>
+                                    <div className="text-right">
+                                        <h3 className="font-bold text-gray-800 dark:text-white text-sm">تخصيص الواجهة</h3>
+                                        <p className="text-[10px] text-gray-400">العملات المثبتة وعرض الذهب</p>
+                                    </div>
+                                </div>
+                                <div className={`transition-transform duration-300 text-gray-400 ${isCustomizeOpen ? 'rotate-180' : ''}`}>
+                                     <IconRenderer icon={Icons.ArrowDown} />
+                                </div>
+                            </button>
+
+                            <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isCustomizeOpen ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0'}`}>
+                                <div className="p-5 pt-2 bg-gray-50/80 dark:bg-gray-900/30 border-t border-gray-100 dark:border-gray-700">
+                                    
+                                    {/* Enhanced Gold Section */}
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl border border-yellow-100 dark:border-yellow-900/30 overflow-hidden mb-4 shadow-sm">
+                                        <div 
+                                            onClick={() => setShowGold(!showGold)}
+                                            className="p-3 flex items-center justify-between cursor-pointer bg-gradient-to-r from-yellow-50/50 to-transparent dark:from-yellow-900/10 hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors"
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-yellow-100 text-yellow-600 flex items-center justify-center text-xl shadow-sm border border-yellow-200">🏆</div>
+                                                <div>
+                                                    <h3 className="font-bold text-gray-800 dark:text-gray-100 text-xs">بطاقة الذهب</h3>
+                                                    <p className="text-[9px] text-gray-500 dark:text-gray-400">عرض في الرئيسية</p>
+                                                </div>
+                                            </div>
+                                            <div className={`w-10 h-5 rounded-full transition-colors flex items-center px-0.5 ${showGold ? 'bg-yellow-500 justify-end' : 'bg-gray-200 justify-start'}`}>
+                                                <div className="w-4 h-4 bg-white rounded-full shadow-sm"></div>
+                                            </div>
+                                        </div>
+
+                                        <div className={`transition-all duration-300 ease-in-out ${showGold ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}`}>
+                                            <div className="p-3 pt-0 border-t border-yellow-50 dark:border-yellow-900/20">
+                                                <div className="flex justify-between items-center my-2">
+                                                     <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">العيارات المختارة</span>
+                                                     <span className="text-[9px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded-full font-bold">{pinnedGold.length}</span>
+                                                </div>
+                                                <div className="grid grid-cols-3 gap-2">
+                                                    {goldData.map((g, i) => {
+                                                        const isSelected = pinnedGold.includes(g.description);
+                                                        return (
+                                                             <button 
+                                                                key={i} 
+                                                                onClick={() => { 
+                                                                    if(isSelected) setPinnedGold(pinnedGold.filter(p => p !== g.description)); 
+                                                                    else setPinnedGold([...pinnedGold, g.description]); 
+                                                                }} 
+                                                                className={`py-2 px-1 rounded-lg text-[10px] font-bold border transition-all ${
+                                                                    isSelected 
+                                                                    ? 'bg-yellow-500 text-white border-yellow-600 shadow-md shadow-yellow-500/20 scale-[1.02]' 
+                                                                    : 'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border-gray-100 dark:border-gray-600 hover:bg-gray-100'
+                                                                }`}
+                                                            >
+                                                                {g.description}
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Currencies Grid Section */}
+                                    <div className="mt-5">
+                                        <div className="flex justify-between items-center mb-3 px-1">
+                                            <h4 className="text-xs font-bold text-gray-500 dark:text-gray-400">تثبيت العملات الرئيسية</h4>
+                                            <span className="text-[10px] text-brand-primary bg-brand-primary/10 px-2 py-0.5 rounded-md">اختر ما يهمك</span>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {currencyData.map((c, i) => { 
+                                                const { flag, code } = getFlagAndCode(c.name); 
+                                                const isPinned = pinned.includes(code); 
+                                                return (
+                                                    <div 
+                                                        key={i} 
+                                                        onClick={() => { if(isPinned) setPinned(pinned.filter(p=>p!==code)); else setPinned([...pinned,code]); }} 
+                                                        className={`p-2.5 rounded-xl border cursor-pointer flex items-center gap-2 transition-all duration-200 relative overflow-hidden ${
+                                                            isPinned 
+                                                            ? 'bg-white dark:bg-gray-700 border-brand-primary shadow-sm' 
+                                                            : 'bg-white dark:bg-gray-800 border-transparent hover:border-gray-200 dark:hover:border-gray-600 opacity-60 hover:opacity-100'
+                                                        }`}
+                                                    >
+                                                        <span className="text-xl relative z-10">{flag}</span>
+                                                        <span className={`text-xs font-bold relative z-10 ${isPinned ? 'text-gray-800 dark:text-white' : 'text-gray-500'}`}>{code}</span>
+                                                        {isPinned && <div className="absolute right-0 top-0 bottom-0 w-1 bg-brand-primary"></div>}
+                                                        {isPinned && <div className="ml-auto text-brand-primary relative z-10"><div className="w-1.5 h-1.5 rounded-full bg-brand-primary"></div></div>}
+                                                    </div>
+                                                ); 
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Contact Card */}
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 mt-4">
+                            <h3 className="font-bold mb-4 flex items-center gap-2 text-gray-800 dark:text-white text-sm">
+                                <span className="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center"><IconRenderer icon={Icons.Send} /></span> 
+                                تواصل معنا
                             </h3>
                             <div className="grid grid-cols-2 gap-3">
-                                <a href="https://t.me/Lairas24" target="_blank" className="group flex flex-col items-center justify-center gap-2 bg-[#229ED9] hover:bg-[#1f8ubc] text-white py-4 rounded-xl shadow-lg shadow-blue-400/20 transition-all hover:scale-[1.02] active:scale-95 relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mt-8 blur-lg"></div>
-                                    <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm -rotate-12 group-hover:rotate-0 transition-transform"><IconRenderer icon={Icons.Send} /></div>
-                                    <span className="font-bold text-sm">تيليجرام</span>
+                                <a href="https://t.me/Lairas24" target="_blank" className="flex items-center gap-3 p-3 rounded-xl bg-[#229ED9]/10 hover:bg-[#229ED9]/20 text-[#229ED9] transition-all border border-[#229ED9]/20">
+                                    <IconRenderer icon={Icons.Send} />
+                                    <span className="font-bold text-xs">تيليجرام</span>
                                 </a>
-                                <a href="https://www.facebook.com/share/1D74ZvQS9v/" target="_blank" className="group flex flex-col items-center justify-center gap-2 bg-[#1877F2] hover:bg-[#166fe5] text-white py-4 rounded-xl shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02] active:scale-95 relative overflow-hidden">
-                                    <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-8 -mt-8 blur-lg"></div>
-                                    <div className="bg-white/20 p-2 rounded-full backdrop-blur-sm group-hover:rotate-12 transition-transform"><IconRenderer icon={Icons.Facebook} /></div>
-                                    <span className="font-bold text-sm">فيسبوك</span>
+                                <a href="https://www.facebook.com/share/1D74ZvQS9v/" target="_blank" className="flex items-center gap-3 p-3 rounded-xl bg-[#1877F2]/10 hover:bg-[#1877F2]/20 text-[#1877F2] transition-all border border-[#1877F2]/20">
+                                    <IconRenderer icon={Icons.Facebook} />
+                                    <span className="font-bold text-xs">فيسبوك</span>
                                 </a>
                             </div>
                         </div>
-                        {/* ------------------- */}
                     </div>
                 </div>
             );
