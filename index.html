@@ -74,7 +74,7 @@
     
     <script>
         tailwind.config = {
-            darkMode: 'class',
+            darkMode: 'class', // *** التعديل 1: للسماح بالتحكم اليدوي عبر فئة 'dark' ***
             theme: {
                 extend: {
                     colors: {
@@ -651,7 +651,59 @@
             const [goldData, setGoldData] = useState([]);
             const [loading, setLoading] = useState(true);
             const [globalLoading, setGlobalLoading] = useState(false);
-            const [darkMode, setDarkMode] = useState(false);
+            
+            // --- Theme Logic: التعديل 2 ---
+            const getInitialThemePreference = () => localStorage.getItem('themePreference') || 'system';
+            const isSystemDark = () => window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            const getEffectiveDarkMode = (pref) => {
+                if (pref === 'dark') return true;
+                if (pref === 'light') return false;
+                return isSystemDark();
+            };
+
+            const [themePreference, setThemePreference] = useState(getInitialThemePreference); // system, dark, light
+            const [darkMode, setDarkMode] = useState(() => getEffectiveDarkMode(getInitialThemePreference())); // Actual effective mode
+
+            // *** تطبيق المظهر ***
+            useEffect(() => { 
+                // 1. Save Preference
+                localStorage.setItem('themePreference', themePreference);
+
+                // 2. Calculate Effective Theme
+                let effectiveDark = getEffectiveDarkMode(themePreference);
+
+                // 3. Apply Class to <html>
+                if (effectiveDark) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+                
+                // 4. Update UI State
+                setDarkMode(effectiveDark); 
+
+            }, [themePreference]);
+            
+            // *** الاستماع لتغيير إعدادات النظام (فقط إذا كان الخيار 'تلقائي') ***
+            useEffect(() => {
+                const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+                const handler = (e) => {
+                    if (themePreference === 'system') {
+                        const effectiveDark = e.matches;
+                        if (effectiveDark) {
+                            document.documentElement.classList.add('dark');
+                        } else {
+                            document.documentElement.classList.remove('dark');
+                        }
+                        setDarkMode(effectiveDark);
+                    }
+                };
+                mediaQuery.addEventListener('change', handler);
+                return () => mediaQuery.removeEventListener('change', handler);
+            }, [themePreference]);
+            // --- نهاية منطق المظهر ---
+
             const [goldCalcWeight, setGoldCalcWeight] = useState(''); 
             const [goldCalcFee, setGoldCalcFee] = useState('');       
             const [selectedGoldId, setSelectedGoldId] = useState(null);
@@ -686,7 +738,7 @@
             useEffect(() => { localStorage.setItem('goldOrder', JSON.stringify(goldOrder)); }, [goldOrder]);
             useEffect(() => { localStorage.setItem('showGoldOnHome', showGold); }, [showGold]);
             useEffect(() => { localStorage.setItem('pinnedGold', JSON.stringify(pinnedGold)); }, [pinnedGold]);
-
+            
             useEffect(() => { loadData(); }, []);
             useEffect(() => { if (goldData.length > 0 && !selectedGoldId) setSelectedGoldId(goldData[0].id || goldData[0].description); }, [goldData]);
             
@@ -706,8 +758,7 @@
                 }
             }, [calcSource, chartTimeframe]);
             useEffect(() => { if (activeTab === 'global') fetchGlobalRates(); }, [activeTab]);
-            useEffect(() => { if (darkMode) document.documentElement.classList.add('dark'); else document.documentElement.classList.remove('dark'); }, [darkMode]);
-
+            
             const loadData = async () => {
                 setLoading(true);
                 const [currencies, gold] = await Promise.all([fetchSupabaseData("currency_rates_api"), fetchSupabaseData("gold_rates_api")]);
@@ -837,7 +888,7 @@
                             <h2 className="text-3xl font-black text-white mb-2 leading-tight tracking-tight">{title}</h2>
                             <div className="flex flex-wrap items-center gap-3">
                                 <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1 rounded-full backdrop-blur-sm">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#2ed06e] animate-pulse"></span>
+                                    <span className="w-1.5 h-1.5 bg-[#2ed06e] rounded-full animate-pulse"></span>
                                     <span className="text-xs text-[#9fe870] font-mono num-en">{formatLastUpdate(time)}</span>
                                 </div>
                                 <span className="text-sm text-gray-400 font-light border-l border-white/10 pl-3">{subtitle}</span>
@@ -1067,24 +1118,40 @@
                     <Header title="الإعدادات" subtitle="تخصيص التطبيق" time={dbLastUpdate} />
                     <div className="px-4 pt-12 space-y-4">
                         
-                        {/* Dark Mode Card */}
-                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 flex justify-between items-center shadow-sm border border-gray-100 dark:border-gray-700">
-                            <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${darkMode ? 'bg-indigo-100 text-indigo-600' : 'bg-orange-100 text-orange-600'}`}>
-                                    <IconRenderer icon={darkMode ? Icons.Moon : Icons.Sun} />
+                        {/* *** التعديل 3: بطاقة اختيار المظهر الجديدة (تلقائي أو يدوي) *** */}
+                        <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center bg-gray-100 dark:bg-gray-700 text-gray-500`}>
+                                    <IconRenderer icon={Icons.Moon} />
                                 </div>
                                 <div>
-                                    <h3 className="font-bold text-gray-800 dark:text-white text-sm">المظهر</h3>
-                                    <p className="text-[10px] text-gray-400">التبديل بين الليلي والنهاري</p>
+                                    <h3 className="font-bold text-gray-800 dark:text-white text-sm">المظهر (الوضع الليلي)</h3>
+                                    <p className="text-[10px] text-gray-400">اختر طريقة تفعيل المظهر الداكن</p>
                                 </div>
                             </div>
-                            <button 
-                                onClick={() => setDarkMode(!darkMode)} 
-                                className={`w-12 h-7 rounded-full transition-all duration-300 flex items-center px-1 ${darkMode ? 'bg-brand-primary justify-end' : 'bg-gray-200 justify-start'}`}
-                            >
-                                <div className="w-5 h-5 bg-white rounded-full shadow-md transform transition-transform"></div>
-                            </button>
+                            <div className="flex bg-gray-100 dark:bg-gray-700 rounded-xl p-1.5">
+                                {['system', 'light', 'dark'].map((mode) => (
+                                    <button
+                                        key={mode}
+                                        onClick={() => setThemePreference(mode)}
+                                        className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                                            themePreference === mode 
+                                                ? 'bg-white dark:bg-gray-800 shadow-md text-brand-dark dark:text-brand-primary' 
+                                                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                                        }`}
+                                    >
+                                        <IconRenderer icon={mode === 'system' ? Icons.Globe : mode === 'dark' ? Icons.Moon : Icons.Sun} />
+                                        <span>{mode === 'system' ? 'تلقائي (النظام)' : mode === 'dark' ? 'مظلم' : 'فاتح'}</span>
+                                    </button>
+                                ))}
+                            </div>
+                            {themePreference === 'system' && (
+                                <div className="mt-3 text-center text-[10px] text-gray-500 dark:text-gray-400">
+                                    <span className="font-bold">{darkMode ? 'الحالة الحالية: مظلم' : 'الحالة الحالية: فاتح'}</span> - يتبع إعداد نظام التشغيل
+                                </div>
+                            )}
                         </div>
+                        {/* *** نهاية بطاقة اختيار المظهر الجديدة *** */}
 
                         {/* Redesigned Content Customization (Accordion) */}
                         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden transition-all duration-300">
@@ -1202,7 +1269,8 @@
                                 <a href="https://t.me/Lairas24" target="_blank" className="flex items-center gap-3 p-3 rounded-xl bg-[#229ED9]/10 hover:bg-[#229ED9]/20 text-[#229ED9] transition-all border border-[#229ED9]/20">
                                     <IconRenderer icon={Icons.Send} />
                                     <span className="font-bold text-xs">تيليجرام</span>
-                                </a>
+                                </a
+                                >
                                 <a href="https://www.facebook.com/share/1D74ZvQS9v/" target="_blank" className="flex items-center gap-3 p-3 rounded-xl bg-[#1877F2]/10 hover:bg-[#1877F2]/20 text-[#1877F2] transition-all border border-[#1877F2]/20">
                                     <IconRenderer icon={Icons.Facebook} />
                                     <span className="font-bold text-xs">فيسبوك</span>
