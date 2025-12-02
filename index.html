@@ -480,6 +480,10 @@
             const spread = sell - buy;
             const chartData = useMemo(() => generateChartData(sell, 15, 0.015), [sell]);
             const goldKey = gold.description;
+            // logic to determine display icon and code in modal
+            const isOunce = gold.description.includes('أونصة');
+            const displayCode = isOunce ? 'OZ' : (gold.description.match(/\d+/) ? `K${gold.description.match(/\d+/)[0]}` : 'GOLD');
+            const displayIcon = isOunce ? '⚖️' : '🏆';
 
             return (
                 <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
@@ -487,11 +491,11 @@
                         
                         <div className="flex justify-between items-start mb-6 relative z-10">
                             <div className="flex items-center gap-4">
-                                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 flex items-center justify-center text-4xl shadow-inner border border-yellow-200 dark:border-yellow-700">🏆</div>
+                                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 flex items-center justify-center text-4xl shadow-inner border border-yellow-200 dark:border-yellow-700">{displayIcon}</div>
                                 <div>
                                     <h2 className="text-xl font-bold text-gray-800 dark:text-white">{gold.description}</h2>
                                     <div className="flex items-center gap-2">
-                                        <span className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-400 text-xs font-bold px-2 py-0.5 rounded-full">GOLD</span>
+                                        <span className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-400 text-xs font-bold px-2 py-0.5 rounded-full">{displayCode}</span>
                                         <span className="text-xs text-gray-400 font-mono">تحديث الصاغة</span>
                                     </div>
                                 </div>
@@ -958,7 +962,16 @@
                                         <>
                                             <div className="flex justify-between items-center mb-2 px-1 mt-6"><span className="font-bold text-gray-700 dark:text-gray-200">أسعار الذهب (مختصر)</span></div>
                                             {visibleGold.length > 0 ? visibleGold.map((g, i) => (
-                                                <RateCard key={`g-${i}`} title={g.description} buy={g.buy_price} sell={g.sell_price} icon="🏆" code="GOLD" stats={g.stats} onClick={() => setSelectedGoldCard(g)} />
+                                                <RateCard 
+                                                    key={`g-${i}`} 
+                                                    title={g.description} 
+                                                    buy={g.buy_price} 
+                                                    sell={g.sell_price} 
+                                                    icon={g.description.includes('أونصة') ? "⚖️" : "🏆"} 
+                                                    code={g.description.includes('أونصة') ? "OZ" : "GOLD"} 
+                                                    stats={g.stats} 
+                                                    onClick={() => setSelectedGoldCard(g)} 
+                                                />
                                             )) : <div className="text-center py-4 text-xs text-gray-400">لم يتم تثبيت أي عيارات ذهب للعرض.</div>}
                                         </>
                                     )}
@@ -991,22 +1004,30 @@
                             {loading ? <div className="text-center py-10">جاري التحميل...</div> : (
                                 <>
                                     <div className="mb-8 space-y-3">
-                                         {finalDisplayGold.map((g, i) => (
-                                            <RateCard 
-                                                key={i} 
-                                                title={g.description} 
-                                                buy={g.buy_price} 
-                                                sell={g.sell_price} 
-                                                icon="✨" 
-                                                code={`K${24-i}`} 
-                                                stats={g.stats} 
-                                                onClick={() => setSelectedGoldCard(g)}
-                                                draggable={true} 
-                                                onDragStart={() => (dragItem.current = i)} 
-                                                onDragEnter={() => (dragOverItem.current = i)} 
-                                                onDragEnd={handleGoldSort}
-                                            />
-                                        ))}
+                                         {finalDisplayGold.map((g, i) => {
+                                            // ** SMART LOGIC: Handle Ounce specifically, else extract karat number **
+                                            const isOunce = g.description.includes('أونصة') || g.description.includes('Ounce');
+                                            const karatMatch = g.description.match(/(\d+)/);
+                                            const displayCode = isOunce ? 'OZ' : (karatMatch ? `K${karatMatch[0]}` : `K${24-i}`);
+                                            const displayIcon = isOunce ? "⚖️" : "✨";
+
+                                            return (
+                                                <RateCard 
+                                                    key={i} 
+                                                    title={g.description} 
+                                                    buy={g.buy_price} 
+                                                    sell={g.sell_price} 
+                                                    icon={displayIcon} 
+                                                    code={displayCode} 
+                                                    stats={g.stats} 
+                                                    onClick={() => setSelectedGoldCard(g)}
+                                                    draggable={true} 
+                                                    onDragStart={() => (dragItem.current = i)} 
+                                                    onDragEnter={() => (dragOverItem.current = i)} 
+                                                    onDragEnd={handleGoldSort}
+                                                />
+                                            );
+                                        })}
                                     </div>
                                     <div className="bg-white dark:bg-gray-800 rounded-[2rem] shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden relative animate-in fade-in slide-in-from-bottom-4 duration-700">
                                         <div className="bg-brand-dark p-5 relative overflow-hidden">
