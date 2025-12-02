@@ -70,11 +70,37 @@
         @keyframes draw {
             to { stroke-dashoffset: 0; }
         }
+
+        /* *** إضافات تأثير الوميض للبطاقات (Glow Effects) *** */
+        @keyframes glow-pulse-green {
+            0%, 100% { 
+                border-color: rgba(16, 185, 129, 0.3); 
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+            50% { 
+                border-color: #2ed06e; 
+                box-shadow: 0 0 15px rgba(46, 208, 110, 0.5), inset 0 0 10px rgba(46, 208, 110, 0.1);
+            }
+        }
+        @keyframes glow-pulse-red {
+            0%, 100% { 
+                border-color: rgba(244, 63, 94, 0.3); 
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            }
+            50% { 
+                border-color: #f43f5e; 
+                box-shadow: 0 0 15px rgba(244, 63, 94, 0.5), inset 0 0 10px rgba(244, 63, 94, 0.1);
+            }
+        }
+        /* تطبيق الأنيميشن */
+        .card-glow-up { animation: glow-pulse-green 3s infinite ease-in-out; }
+        .card-glow-down { animation: glow-pulse-red 3s infinite ease-in-out; }
+
     </style>
     
     <script>
         tailwind.config = {
-            darkMode: 'class', // *** التعديل 1: للسماح بالتحكم اليدوي عبر فئة 'dark' ***
+            darkMode: 'class', 
             theme: {
                 extend: {
                     colors: {
@@ -511,14 +537,14 @@
             );
         };
 
-        // *** REDESIGNED RATE CARD ***
+        // *** REDESIGNED RATE CARD (With Glow Effect) ***
         const RateCard = ({ title, buy, sell, icon, code, stats, time, onClick, draggable, onDragStart, onDragEnter, onDragEnd }) => {
             const isUp = stats?.direction === 'up';
             const isDown = stats?.direction === 'down';
             
-            // Dynamic Color Logic
-            const borderColor = isUp ? 'border-emerald-500/20 dark:border-emerald-500/10' : isDown ? 'border-rose-500/20 dark:border-rose-500/10' : 'border-gray-100 dark:border-gray-700';
-            const shadowClass = isUp ? 'shadow-emerald-500/5 hover:shadow-emerald-500/10' : isDown ? 'shadow-rose-500/5 hover:shadow-rose-500/10' : 'shadow-gray-200/50 hover:shadow-gray-300/50';
+            // Dynamic Glow Logic
+            const glowClass = isUp ? 'card-glow-up' : isDown ? 'card-glow-down' : 'border-gray-100 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-500';
+            
             const trendIcon = isUp ? Icons.TrendUp : isDown ? Icons.TrendDown : Icons.Minus;
             const trendTextColor = isUp ? 'text-emerald-600 dark:text-emerald-400' : isDown ? 'text-rose-600 dark:text-rose-400' : 'text-gray-400';
             const trendBgColor = isUp ? 'bg-emerald-50 dark:bg-emerald-900/20' : isDown ? 'bg-rose-50 dark:bg-rose-900/20' : 'bg-gray-100 dark:bg-gray-700';
@@ -531,7 +557,7 @@
                     onDragStart={onDragStart}
                     onDragEnter={onDragEnter}
                     onDragEnd={onDragEnd}
-                    className={`group relative overflow-hidden bg-white dark:bg-gray-800 rounded-2xl p-4 mb-3 border ${borderColor} shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg cursor-pointer ${isUp ? 'animate-up' : isDown ? 'animate-down' : ''}`}
+                    className={`group relative overflow-hidden bg-white dark:bg-gray-800 rounded-2xl p-4 mb-3 border shadow-sm transition-all duration-300 hover:-translate-y-1 cursor-pointer ${glowClass}`}
                 >
                     {/* Subtle Gradient Background for Trends */}
                     <div className={`absolute inset-0 bg-gradient-to-br ${trendGradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500 dark:opacity-0`}></div>
@@ -652,7 +678,7 @@
             const [loading, setLoading] = useState(true);
             const [globalLoading, setGlobalLoading] = useState(false);
             
-            // --- Theme Logic: التعديل 2 ---
+            // --- Theme Logic ---
             const getInitialThemePreference = () => localStorage.getItem('themePreference') || 'system';
             const isSystemDark = () => window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
             
