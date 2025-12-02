@@ -71,7 +71,7 @@
             to { stroke-dashoffset: 0; }
         }
 
-        /* *** إضافات تأثير الوميض للبطاقات (Glow Effects) *** */
+        /* *** إضافات تأثير الوميض للبطاقات (Card Glow Effects) *** */
         @keyframes glow-pulse-green {
             0%, 100% { 
                 border-color: rgba(16, 185, 129, 0.3); 
@@ -92,9 +92,21 @@
                 box-shadow: 0 0 15px rgba(244, 63, 94, 0.5), inset 0 0 10px rgba(244, 63, 94, 0.1);
             }
         }
-        /* تطبيق الأنيميشن */
         .card-glow-up { animation: glow-pulse-green 3s infinite ease-in-out; }
         .card-glow-down { animation: glow-pulse-red 3s infinite ease-in-out; }
+
+        /* *** تأثير الوميض لقائمة التنقل (NavBar Glow) *** */
+        @keyframes nav-pulse {
+            0%, 100% {
+                border-color: rgba(46, 208, 110, 0.1); 
+                box-shadow: 0 10px 40px -10px rgba(0,0,0,0.1);
+            }
+            50% {
+                border-color: rgba(46, 208, 110, 0.8); /* لون البراند الأخضر */
+                box-shadow: 0 0 25px rgba(46, 208, 110, 0.4), inset 0 0 5px rgba(46, 208, 110, 0.05);
+            }
+        }
+        .nav-glow { animation: nav-pulse 4s infinite ease-in-out; }
 
     </style>
     
@@ -1328,7 +1340,7 @@
 
             const NavBar = () => (
                  <div className="fixed bottom-6 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-full md:max-w-sm z-50">
-                    <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-[2.5rem] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] dark:shadow-black/50 border border-white/50 dark:border-gray-700/50 p-2 flex justify-between items-center h-[72px]">
+                    <div className="nav-glow bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-[2.5rem] shadow-[0_10px_40px_-10px_rgba(0,0,0,0.15)] dark:shadow-black/50 border border-white/50 dark:border-gray-700/50 p-2 flex justify-between items-center h-[72px]">
                         
                         {/* Home Button */}
                         <button onClick={() => setActiveTab('home')} className={`relative flex flex-col items-center justify-center w-14 h-full rounded-2xl transition-all duration-500 group ${activeTab === 'home' ? 'text-brand-primary' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'}`}>
