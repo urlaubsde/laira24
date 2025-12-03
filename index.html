@@ -29,6 +29,9 @@
             -webkit-user-select: none; /* Safari */
             -ms-user-select: none; /* IE 10 and IE 11 */
             user-select: none; /* Standard syntax */
+            
+            /* *** MODIFICATION 1: DISABLE PULL-TO-REFRESH FOR PWA *** */
+            overscroll-behavior-y: none;
         }
         
         /* Allow selection in inputs and textareas only */
@@ -491,10 +494,12 @@
             const spread = sell - buy;
             const chartData = useMemo(() => generateChartData(sell, 15, 0.015), [sell]);
             const goldKey = gold.description;
-            // logic to determine display icon and code in modal
+            
+            // MODIFICATION 2: Check for Ounce to handle USD identity
             const isOunce = gold.description.includes('أونصة') || gold.description.includes('Ounce');
             const displayCode = isOunce ? 'OZ' : (gold.description.match(/\d+/) ? `K${gold.description.match(/\d+/)[0]}` : 'GOLD');
             const displayIcon = isOunce ? '⚖️' : '🏆';
+            const currencySymbol = isOunce ? "$" : "ل.س";
 
             return (
                 <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={onClose}>
@@ -521,11 +526,15 @@
                         <div className="grid grid-cols-2 gap-4 mb-6 relative z-10">
                             <div className="bg-yellow-50/50 dark:bg-gray-700/50 p-4 rounded-2xl border border-yellow-100 dark:border-gray-600">
                                 <span className="text-xs text-gray-400 block mb-1">سعر المبيع</span>
-                                <span className="text-xl font-bold num-en text-gray-800 dark:text-white">{sell.toLocaleString('en-US')}</span>
+                                <span className="text-xl font-bold num-en text-gray-800 dark:text-white">
+                                    {isOunce ? '$ ' : ''}{sell.toLocaleString('en-US')}
+                                </span>
                             </div>
                             <div className="bg-yellow-50/50 dark:bg-gray-700/50 p-4 rounded-2xl border border-yellow-100 dark:border-gray-600">
                                 <span className="text-xs text-gray-400 block mb-1">سعر الشراء</span>
-                                <span className="text-xl font-bold num-en text-yellow-600">{buy.toLocaleString('en-US')}</span>
+                                <span className="text-xl font-bold num-en text-yellow-600">
+                                    {isOunce ? '$ ' : ''}{buy.toLocaleString('en-US')}
+                                </span>
                             </div>
                         </div>
 
@@ -540,7 +549,7 @@
                             </div>
                             <div className="flex justify-between items-center py-2 border-b border-dashed border-gray-200 dark:border-gray-700">
                                 <span className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2"><IconRenderer icon={Icons.Info} />فرق الصياغة (Spread)</span>
-                                <span className="font-mono font-bold text-gray-700 dark:text-gray-200 num-en">{spread.toLocaleString('en-US')} <span className="text-[10px]">ل.س</span></span>
+                                <span className="font-mono font-bold text-gray-700 dark:text-gray-200 num-en">{spread.toLocaleString('en-US')} <span className="text-[10px]">{currencySymbol}</span></span>
                             </div>
                         </div>
 
@@ -565,7 +574,8 @@
         };
 
         // *** REDESIGNED RATE CARD (With Glow Effect) ***
-        const RateCard = ({ title, buy, sell, icon, code, stats, time, onClick, draggable, onDragStart, onDragEnter, onDragEnd }) => {
+        // MODIFICATION 2: Added `isUsd` prop to render dollar sign for Ounce items
+        const RateCard = ({ title, buy, sell, icon, code, stats, time, onClick, draggable, onDragStart, onDragEnter, onDragEnd, isUsd = false }) => {
             const isUp = stats?.direction === 'up';
             const isDown = stats?.direction === 'down';
             
@@ -629,7 +639,7 @@
                                 <span className="w-1.5 h-1.5 rounded-full bg-red-400"></span> مبيع
                             </span>
                             <span className={`text-lg font-black num-en tracking-tight ${isDown ? 'text-rose-500' : 'text-gray-800 dark:text-white'}`}>
-                                {parseFloat(sell).toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                                {isUsd ? '$ ' : ''}{parseFloat(sell).toLocaleString('en-US', { maximumFractionDigits: 3 })}
                             </span>
                         </div>
 
@@ -639,7 +649,7 @@
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> شراء
                             </span>
                             <span className={`text-lg font-black num-en tracking-tight ${isUp ? 'text-emerald-500' : 'text-brand-primary'}`}>
-                                {parseFloat(buy).toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                                {isUsd ? '$ ' : ''}{parseFloat(buy).toLocaleString('en-US', { maximumFractionDigits: 3 })}
                             </span>
                         </div>
                     </div>
@@ -1066,7 +1076,9 @@
                                                     sell={g.sell_price} 
                                                     icon={g.description.includes('أونصة') ? "⚖️" : "🏆"} 
                                                     code={g.description.includes('أونصة') ? "OZ" : "GOLD"} 
-                                                    stats={g.stats} 
+                                                    stats={g.stats}
+                                                    // MODIFICATION 2: Check is Ounce to pass prop
+                                                    isUsd={g.description.includes('أونصة') || g.description.includes('Ounce')}
                                                     onClick={() => setSelectedGoldCard(g)}
                                                     draggable={true}
                                                     onDragStart={() => (dragItem.current = i)} 
@@ -1125,6 +1137,8 @@
                                                     icon={displayIcon} 
                                                     code={displayCode} 
                                                     stats={g.stats} 
+                                                    // MODIFICATION 2: Check is Ounce to pass prop
+                                                    isUsd={isOunce}
                                                     onClick={() => setSelectedGoldCard(g)}
                                                     draggable={true} 
                                                     onDragStart={() => (dragItem.current = i)} 
