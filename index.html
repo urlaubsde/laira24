@@ -25,7 +25,18 @@
         body {
             font-family: 'Cairo', sans-serif;
             -webkit-tap-highlight-color: transparent;
+            /* *** DISABLE TEXT SELECTION GLOBALLY *** */
+            -webkit-user-select: none; /* Safari */
+            -ms-user-select: none; /* IE 10 and IE 11 */
+            user-select: none; /* Standard syntax */
         }
+        
+        /* Allow selection in inputs and textareas only */
+        input, textarea, select {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
         .num-en {
             font-family: sans-serif;
             direction: ltr;
@@ -129,7 +140,7 @@
         }
     </script>
 </head>
-<body class="bg-gray-100 text-gray-900 transition-colors duration-300">
+<body class="bg-gray-100 text-gray-900 transition-colors duration-300" oncontextmenu="return false;">
     <div id="root"></div>
 
     <script>
@@ -573,6 +584,7 @@
                     onDragStart={onDragStart}
                     onDragEnter={onDragEnter}
                     onDragEnd={onDragEnd}
+                    onDragOver={(e) => e.preventDefault()}
                     className={`group relative overflow-hidden bg-white dark:bg-gray-800 rounded-2xl p-4 mb-3 border shadow-sm transition-all duration-300 hover:-translate-y-1 cursor-pointer ${glowClass}`}
                 >
                     {/* Subtle Gradient Background for Trends */}
@@ -772,6 +784,16 @@
             // ** NEW: Pinned Gold State **
             const [pinnedGold, setPinnedGold] = useState(() => { try { return JSON.parse(localStorage.getItem('pinnedGold')) || []; } catch { return []; } });
 
+            // *** NEW: Global Currencies Order State (for drag and drop in Global tab) ***
+            const [globalOrder, setGlobalOrder] = useState(() => { 
+                try { 
+                    const stored = JSON.parse(localStorage.getItem('globalOrder'));
+                    return stored || Object.keys(GLOBAL_DISPLAY_MAP); 
+                } catch { 
+                    return Object.keys(GLOBAL_DISPLAY_MAP); 
+                } 
+            });
+
             const [selectedGoldCard, setSelectedGoldCard] = useState(null);
 
             const dragItem = useRef();
@@ -782,6 +804,8 @@
             useEffect(() => { localStorage.setItem('goldOrder', JSON.stringify(goldOrder)); }, [goldOrder]);
             useEffect(() => { localStorage.setItem('showGoldOnHome', showGold); }, [showGold]);
             useEffect(() => { localStorage.setItem('pinnedGold', JSON.stringify(pinnedGold)); }, [pinnedGold]);
+            // *** NEW: Save Global Order ***
+            useEffect(() => { localStorage.setItem('globalOrder', JSON.stringify(globalOrder)); }, [globalOrder]);
             
             useEffect(() => { loadData(); }, []);
             useEffect(() => { if (goldData.length > 0 && !selectedGoldId) setSelectedGoldId(goldData[0].id || goldData[0].description); }, [goldData]);
@@ -922,6 +946,39 @@
                 setGoldOrder(newOrder);
             };
 
+            // *** NEW: Handle Sort for Pinned Gold (Home Page) ***
+            const handlePinnedGoldSort = () => {
+                let _pinned = [...pinnedGold];
+                const draggedItemContent = _pinned.splice(dragItem.current, 1)[0];
+                _pinned.splice(dragOverItem.current, 0, draggedItemContent);
+                dragItem.current = null;
+                dragOverItem.current = null;
+                setPinnedGold(_pinned);
+            };
+
+            // *** IMPROVED: Robust Handle Sort for Global Currencies ***
+            const handleGlobalSort = () => {
+                // 1. Get the current visible list (excluding base currency)
+                const visibleItems = globalOrder.filter(k => k !== baseCurrency);
+                
+                // 2. Perform the swap on the visual list
+                let _visibleList = [...visibleItems];
+                const draggedItemContent = _visibleList.splice(dragItem.current, 1)[0];
+                _visibleList.splice(dragOverItem.current, 0, draggedItemContent);
+                
+                // 3. Reconstruct globalOrder (Visible Sorted + Hidden Base)
+                // We keep the baseCurrency (which is hidden) at the end of the array,
+                // or just ensure it exists in the new order so it's not lost.
+                const newGlobalOrder = [..._visibleList];
+                if (!newGlobalOrder.includes(baseCurrency)) {
+                    newGlobalOrder.push(baseCurrency);
+                }
+                
+                dragItem.current = null;
+                dragOverItem.current = null;
+                setGlobalOrder(newGlobalOrder);
+            };
+
             // *** REDESIGNED HEADER START ***
             const Header = ({ title, subtitle, time }) => (
                 <div className="relative z-10 mb-[-2rem] overflow-hidden rounded-b-[3rem] bg-[#163300] shadow-2xl">
@@ -982,7 +1039,7 @@
 
             const renderHome = () => {
                 const visibleCurrencies = pinned.map(code => currencyData.find(c => c.code === code)).filter(Boolean);
-                // ** UPDATED: Use pinnedGold state instead of just slicing the top 2 **
+                // ** UPDATED: Use pinnedGold state **
                 const visibleGold = pinnedGold.map(desc => goldData.find(g => g.description === desc)).filter(Boolean);
                 
                 return (
@@ -1000,6 +1057,7 @@
                                     {showGold && (
                                         <>
                                             <div className="flex justify-between items-center mb-2 px-1 mt-6"><span className="font-bold text-gray-700 dark:text-gray-200">أسعار الذهب (مختصر)</span></div>
+                                            {/* *** UPDATED: Added Drag & Drop Props to Home Gold Cards *** */}
                                             {visibleGold.length > 0 ? visibleGold.map((g, i) => (
                                                 <RateCard 
                                                     key={`g-${i}`} 
@@ -1009,7 +1067,11 @@
                                                     icon={g.description.includes('أونصة') ? "⚖️" : "🏆"} 
                                                     code={g.description.includes('أونصة') ? "OZ" : "GOLD"} 
                                                     stats={g.stats} 
-                                                    onClick={() => setSelectedGoldCard(g)} 
+                                                    onClick={() => setSelectedGoldCard(g)}
+                                                    draggable={true}
+                                                    onDragStart={() => (dragItem.current = i)} 
+                                                    onDragEnter={() => (dragOverItem.current = i)} 
+                                                    onDragEnd={handlePinnedGoldSort}
                                                 />
                                             )) : <div className="text-center py-4 text-xs text-gray-400">لم يتم تثبيت أي عيارات ذهب للعرض.</div>}
                                         </>
@@ -1148,9 +1210,11 @@
                         const eurRate = globalRawData['EUR']?.value;
                         if (eurRate) conversionFactor = 1 / eurRate;
                     }
-                    Object.keys(GLOBAL_DISPLAY_MAP).forEach(key => {
-                        if (key === baseCurrency) return;
-                        if (globalRawData[key]) {
+                    
+                    // *** UPDATED: Use globalOrder for iteration to support sorting ***
+                    globalOrder.forEach(key => {
+                        if (key === baseCurrency) return; // Hide base currency
+                        if (globalRawData[key] && GLOBAL_DISPLAY_MAP[key]) {
                             const rawRate = globalRawData[key].value;
                             const baseRate = rawRate * conversionFactor;
                             const sell = baseRate * (1 + SPREAD_PERCENTAGE);
@@ -1185,7 +1249,21 @@
                             </div>
                             {globalLoading && !globalRawData ? <div className="text-center py-10 text-gray-400">جاري جلب الأسعار...</div> : (
                                 <>
-                                    {displayList.map((curr, i) => <RateCard key={i} title={curr.name} buy={curr.buy} sell={curr.sell} icon={curr.flag} code={curr.code} />)}
+                                    {/* *** UPDATED: Added Drag & Drop Props to Global Cards *** */}
+                                    {displayList.map((curr, i) => (
+                                        <RateCard 
+                                            key={curr.code} // Using code as key is safer here
+                                            title={curr.name} 
+                                            buy={curr.buy} 
+                                            sell={curr.sell} 
+                                            icon={curr.flag} 
+                                            code={curr.code} 
+                                            draggable={true}
+                                            onDragStart={() => (dragItem.current = i)} 
+                                            onDragEnter={() => (dragOverItem.current = i)} 
+                                            onDragEnd={handleGlobalSort}
+                                        />
+                                    ))}
                                     <p className="text-center text-xs text-gray-400 mt-4">الأسعار عالمية ويتم تحديثها كل 45 دقيقة.</p>
                                 </>
                             )}
