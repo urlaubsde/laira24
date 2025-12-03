@@ -30,7 +30,7 @@
             -ms-user-select: none; /* IE 10 and IE 11 */
             user-select: none; /* Standard syntax */
             
-            /* *** MODIFICATION 1: DISABLE PULL-TO-REFRESH FOR PWA *** */
+            /* *** DISABLE PULL-TO-REFRESH FOR PWA *** */
             overscroll-behavior-y: none;
         }
         
@@ -164,7 +164,9 @@
         const ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhjbW92emticHVtdnVmdm1haGV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjM2MTc2MjYsImV4cCI6MjA3OTE5MzYyNn0.aLxh6TSQ6pznFoeWpgnbdDYv1eJBNKtcdonyLhzJUZs";
         const CURRENCY_API_KEY = "cur_live_CDxQbX4wFRag1Je6lH4NbngQ3ifR7dRF4bQR6azA";
         const GLOBAL_CACHE_DURATION = 45 * 60 * 1000;
-        const SPREAD_PERCENTAGE = 0.005;
+        
+        // *** MODIFICATION: Reduced spread from 0.005 to 0.002 to tighten the gap ***
+        const SPREAD_PERCENTAGE = 0.002;
 
         const GLOBAL_DISPLAY_MAP = {
             USD: { name: "دولار أمريكي", flag: "🇺🇸" },
